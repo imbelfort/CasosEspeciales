@@ -32,8 +32,16 @@
             <strong class="code-tag">{{ oficio.numero_oficio }}</strong>
             <span class="oficio-ref">{{ oficio.referencia }}</span>
           </div>
-          <span class="status-badge REMITIDA_A_CPD">Emitido</span>
+          <div class="oficio-acciones">
+            <DescargarCsvOficio :oficio="oficio" />
+            <button type="button" class="btn-primary" :disabled="loading" @click="oficioPorHabilitar = oficio">
+              <CheckSquare :size="16" class="inline-icon" aria-hidden="true" />
+              Habilitar todos los casos
+            </button>
+          </div>
         </div>
+
+        <ResumenCuposOficio titulo="Cupos pendientes de confirmación" :solicitudes="oficio.solicitudes" />
 
         <div class="table-responsive mt-3" tabindex="0" role="region" aria-label="Solicitudes del oficio">
           <table class="data-table">
@@ -43,6 +51,7 @@
                 <th scope="col">Estudiante</th>
                 <th scope="col">Registro</th>
                 <th scope="col">Materia / Grupo</th>
+                <th scope="col">Cupos</th>
                 <th scope="col">Acción Técnica</th>
               </tr>
             </thead>
@@ -53,9 +62,10 @@
                 <td>{{ sol.estudiante?.registro_universitario }}</td>
                 <td>
                   <div v-for="sg in sol.grupos" :key="sg.id">
-                    {{ sg.grupo?.materia?.sigla }} - Gr. {{ sg.grupo?.sigla_grupo }}
+                    {{ sg.grupo?.materia?.sigla }} · {{ sg.grupo?.materia?.nombre }} · Grupo {{ sg.grupo?.sigla_grupo }}
                   </div>
                 </td>
+                <td>{{ sol.grupos.length }}</td>
                 <td>
                   <button type="button" @click="abrirRespuesta(oficio, sol)" :disabled="loading" class="btn-action btn-pay">
                     <CheckSquare :size="14" class="inline-icon" /> Resolver CPD (CU6)
@@ -81,7 +91,14 @@
         <div class="table-responsive" tabindex="0" role="region" aria-label="Historial de oficios emitidos">
           <table class="data-table">
             <thead>
-              <tr><th scope="col">Oficio</th><th scope="col">Fecha de remisión</th><th scope="col">Destinatario</th><th scope="col">Casos remitidos</th><th scope="col">Pendientes en CPD</th></tr>
+              <tr>
+                <th scope="col">Oficio</th>
+                <th scope="col">Fecha de remisión</th>
+                <th scope="col">Destinatario</th>
+                <th scope="col">Casos remitidos</th>
+                <th scope="col">Pendientes en CPD</th>
+                <th scope="col">Archivo</th>
+              </tr>
             </thead>
             <tbody>
               <tr v-for="oficio in emitidos.data" :key="oficio.id">
@@ -90,6 +107,7 @@
                 <td>{{ oficio.destinatario }}</td>
                 <td>{{ entero.format(oficio.solicitudes_count) }}</td>
                 <td>{{ oficio.pendientes_count ? entero.format(oficio.pendientes_count) : 'Sin pendientes' }}</td>
+                <td><DescargarCsvOficio :oficio="oficio" /></td>
               </tr>
             </tbody>
           </table>
@@ -193,6 +211,29 @@
       </div>
     </div>
 
+    <div v-if="oficioPorHabilitar" class="modal-backdrop">
+      <div class="modal-box modal-respuesta" role="dialog" aria-modal="true" aria-labelledby="titulo-habilitar-oficio">
+        <div class="modal-header">
+          <h3 id="titulo-habilitar-oficio">Habilitar {{ oficioPorHabilitar.numero_oficio }}</h3>
+          <button type="button" class="btn-close" aria-label="Cerrar" :disabled="loading" @click="cerrarHabilitacionOficio">
+            <X :size="18" />
+          </button>
+        </div>
+        <form class="modal-form" @submit.prevent="habilitarOficio">
+          <div class="modal-body-scroll">
+            <ResumenCuposOficio titulo="Casos y cupos a habilitar" :solicitudes="oficioPorHabilitar.solicitudes" />
+            <p v-if="errorHabilitacion" role="alert">{{ errorHabilitacion }}</p>
+          </div>
+          <div class="modal-footer">
+            <button type="button" class="btn-secondary" :disabled="loading" @click="cerrarHabilitacionOficio">Cancelar</button>
+            <button type="submit" class="btn-primary" :disabled="loading">
+              {{ loading ? 'Guardando…' : 'Confirmar habilitación del oficio' }}
+            </button>
+          </div>
+        </form>
+      </div>
+    </div>
+
     <!-- MODAL RESPONDER CPD (CU6) -->
     <div v-if="modalRespuesta && solicitudActiva" class="modal-backdrop">
       <div class="modal-box modal-respuesta" role="dialog" aria-modal="true" aria-labelledby="titulo-respuesta-cpd">
@@ -201,10 +242,10 @@
           <button type="button" @click="modalRespuesta = false" class="btn-close" aria-label="Cerrar" :disabled="loading"><X :size="18" /></button>
         </div>
         <form @submit.prevent="ejecutarRespuesta" class="modal-form">
-          <div class="respuesta-campos">
+          <div class="modal-body-scroll respuesta-campos">
             <div class="form-group">
               <label>Decisión Técnica (*):</label>
-              <select v-model="formResp.resultado" @change="cambiarResultadoGeneral" required>
+              <select v-model="formResp.resultado" required>
                 <option value="HABILITADO">HABILITADO (Inscripción confirmada)</option>
                 <option value="OBSERVADO">OBSERVADO</option>
                 <option value="RECHAZADO">RECHAZADO</option>
@@ -213,7 +254,24 @@
 
             <!-- Selección granular de materias habilitadas por CPD -->
             <div v-if="solicitudActiva.grupos && solicitudActiva.grupos.length > 0" class="form-group">
-              <label>Habilitación Técnica por Asignatura (CPD habilita cupo final):</label>
+              <p class="resumen-confirmacion">
+                {{ solicitudActiva.estudiante?.usuario?.nombre }} {{ solicitudActiva.estudiante?.usuario?.apellidos }}
+                · Registro {{ solicitudActiva.estudiante?.registro_universitario }}
+              </p>
+              <div class="acciones-materias">
+                <p class="resumen-confirmacion" role="status">
+                  {{ formRespMaterias.length }} cupo(s) remitido(s) · {{ cuposConfirmados }} a habilitar
+                </p>
+                <button
+                  type="button"
+                  class="btn-secondary"
+                  :disabled="loading || cuposConfirmados === formRespMaterias.length"
+                  @click="habilitarTodasLasMaterias"
+                >
+                  <CheckSquare :size="16" class="inline-icon" aria-hidden="true" />
+                  Habilitar todas
+                </button>
+              </div>
               <div class="table-responsive" tabindex="0" role="region" aria-label="Respuesta por materia">
                 <table class="data-table">
                   <thead>
@@ -225,22 +283,22 @@
                   </thead>
                   <tbody>
                     <tr v-for="sg in formRespMaterias" :key="sg.id">
-                      <td><strong>{{ sg.materia_sigla }}</strong> (Gr. {{ sg.sigla_grupo }})</td>
+                      <td><strong>{{ sg.materia_sigla }}</strong> {{ sg.materia_nombre }} (Gr. {{ sg.sigla_grupo }})</td>
                       <td>
-                        <select v-model="sg.estado" @change="verificarMateriasCpd" class="form-control-sm">
+                        <select v-model="sg.estado" :disabled="formResp.resultado !== 'HABILITADO'" class="form-control-sm" :aria-label="`Resultado para ${sg.materia_sigla}, grupo ${sg.sigla_grupo}`">
                           <option value="HABILITADA">HABILITADA (Cupo asignado)</option>
                           <option value="RECHAZADA_CPD">RECHAZADA (Sin cupo CPD)</option>
-                          <option value="PENDIENTE">PENDIENTE</option>
+                          <option value="PENDIENTE" disabled>Selecciona un resultado</option>
                         </select>
                       </td>
                       <td>
-                        <input v-model="sg.observacion" placeholder="Detalle técnico CPD..." class="form-control-sm" />
+                        <input v-model="sg.observacion" :disabled="formResp.resultado === 'OBSERVADO'" :aria-label="`Observación para ${sg.materia_sigla}, grupo ${sg.sigla_grupo}`" placeholder="Detalle técnico CPD..." class="form-control-sm" />
                       </td>
                     </tr>
                   </tbody>
                 </table>
               </div>
-              <small class="text-muted">Si todas las materias quedan rechazadas por falta de cupo, el trámite pasa a RECHAZADO automáticamente.</small>
+              <small class="text-muted">Confirma cada materia habilitada en CPD. Si rechazas todas, el caso se registra como rechazado.</small>
             </div>
             <div class="form-group">
               <label for="codigo-respuesta-cpd">Código Único de Respuesta (*):</label>
@@ -253,7 +311,7 @@
           </div>
           <div class="modal-footer">
             <button type="button" @click="modalRespuesta = false" class="btn-secondary" :disabled="loading">Cancelar</button>
-            <button type="submit" class="btn-primary" :disabled="loading">{{ loading ? 'Guardando…' : 'Confirmar resolución' }}</button>
+            <button type="submit" class="btn-primary" :disabled="loading || respuestaIncompleta">{{ loading ? 'Guardando…' : 'Confirmar resolución' }}</button>
           </div>
         </form>
       </div>
@@ -265,6 +323,8 @@
 import { computed, ref, onMounted } from 'vue';
 import { RefreshCw, CheckSquare, X, Calendar } from '@lucide/vue';
 import api from '../../services/api';
+import DescargarCsvOficio from '../../components/common/DescargarCsvOficio.vue';
+import ResumenCuposOficio from '../../components/common/ResumenCuposOficio.vue';
 
 const props = defineProps({ usuario: Object });
 const esCpd = computed(() => props.usuario?.roles?.some(rol => rol.nombre === 'CPD'));
@@ -318,6 +378,8 @@ const modalRespuesta = ref(false);
 const modalConfigPeriodo = ref(false);
 const oficioActivo = ref(null);
 const solicitudActiva = ref(null);
+const oficioPorHabilitar = ref(null);
+const errorHabilitacion = ref('');
 
 const formResp = ref({ resultado: 'HABILITADO', codigo_respuesta: '', observaciones: '' });
 const formRespMaterias = ref([]);
@@ -391,35 +453,25 @@ const abrirRespuesta = (oficio, sol) => {
   formRespMaterias.value = (sol.grupos || []).map(sg => ({
     id: sg.id,
     materia_sigla: sg.grupo?.materia?.sigla || 'MAT',
+    materia_nombre: sg.grupo?.materia?.nombre || '',
     sigla_grupo: sg.grupo?.sigla_grupo || 'SA',
-    estado: sg.estado === 'RECHAZADA' ? 'RECHAZADA_CPD' : 'HABILITADA',
-    observacion: sg.observacion_resolucion || ''
+    estado: 'PENDIENTE',
+    observacion: ''
   }));
-  verificarMateriasCpd();
   modalRespuesta.value = true;
 };
 
-const verificarMateriasCpd = () => {
-  if (!formRespMaterias.value.length) return;
-  const tieneHabilitadas = formRespMaterias.value.some(m => m.estado === 'HABILITADA');
-  if (!tieneHabilitadas) {
-    formResp.value.resultado = 'RECHAZADO';
-    if (!formResp.value.observaciones) {
-      formResp.value.observaciones = 'Sin cupo técnico disponible en las materias solicitadas.';
-    }
-  }
+const cuposConfirmados = computed(() => formResp.value.resultado === 'HABILITADO'
+  ? formRespMaterias.value.filter(m => m.estado === 'HABILITADA').length
+  : 0);
+
+const habilitarTodasLasMaterias = () => {
+  formResp.value.resultado = 'HABILITADO';
+  formRespMaterias.value.forEach(m => { m.estado = 'HABILITADA'; });
 };
 
-const cambiarResultadoGeneral = () => {
-  if (formResp.value.resultado === 'HABILITADO') {
-    const tieneHabilitadas = formRespMaterias.value.some(m => m.estado === 'HABILITADA');
-    if (!tieneHabilitadas && formRespMaterias.value.length > 0) {
-      formRespMaterias.value[0].estado = 'HABILITADA';
-    }
-  } else if (formResp.value.resultado === 'RECHAZADO') {
-    formRespMaterias.value.forEach(m => m.estado = 'RECHAZADA_CPD');
-  }
-};
+const respuestaIncompleta = computed(() => formResp.value.resultado === 'HABILITADO'
+  && (!formRespMaterias.value.length || formRespMaterias.value.some(m => m.estado === 'PENDIENTE')));
 
 const retirarDePendientes = (id) => {
   cargaPendientes++;
@@ -436,10 +488,41 @@ const estadosResolucion = {
   RECHAZADA_CPD: 'Rechazada por CPD',
 };
 
+const cerrarHabilitacionOficio = () => {
+  oficioPorHabilitar.value = null;
+  errorHabilitacion.value = '';
+};
+
+const habilitarOficio = async () => {
+  const oficio = oficioPorHabilitar.value;
+  if (loading.value || !oficio) return;
+  loading.value = true;
+  errorHabilitacion.value = '';
+  try {
+    const { data } = await api.post(`/cpd/oficios/${oficio.id}/habilitar`, {
+      solicitudes_ids: oficio.solicitudes.map(sol => sol.id)
+    });
+    oficios.value = oficios.value.filter(item => item.id !== oficio.id);
+    avisoResolucion.value = `${oficio.numero_oficio} · Casos habilitados: ${data.casos_habilitados}. Cupos confirmados: ${data.cupos_habilitados}.`;
+    cerrarHabilitacionOficio();
+    actualizarPanel();
+  } catch (error) {
+    const mensaje = error.response?.data?.error || error.response?.data?.message || 'No se pudo habilitar el oficio.';
+    if (error.response?.status === 409) {
+      cerrarHabilitacionOficio();
+      avisoResolucion.value = mensaje;
+      actualizarPanel();
+    } else {
+      errorHabilitacion.value = mensaje;
+    }
+  } finally {
+    loading.value = false;
+  }
+};
+
 const ejecutarRespuesta = async () => {
-  if (loading.value) return;
+  if (loading.value || respuestaIncompleta.value) return;
   const solicitud = solicitudActiva.value;
-  verificarMateriasCpd();
   loading.value = true;
   try {
     const { data } = await api.post('/cpd/responder', {
@@ -448,9 +531,9 @@ const ejecutarRespuesta = async () => {
       resultado: formResp.value.resultado,
       codigo_respuesta: formResp.value.codigo_respuesta,
       observaciones: formResp.value.observaciones,
-      materias_habilitadas: formRespMaterias.value.map(m => ({
+      materias_habilitadas: formResp.value.resultado === 'OBSERVADO' ? [] : formRespMaterias.value.map(m => ({
         id: m.id,
-        estado: m.estado,
+        estado: formResp.value.resultado === 'RECHAZADO' ? 'RECHAZADA_CPD' : m.estado,
         observacion: m.observacion
       }))
     });
@@ -478,6 +561,19 @@ onMounted(actualizarPanel);
 </script>
 
 <style scoped>
+.resumen-confirmacion { margin: 0 0 0.5rem; }
+
+.acciones-materias {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 0.5rem 1rem;
+  margin-bottom: 0.75rem;
+}
+
+.acciones-materias .resumen-confirmacion { margin: 0; }
+
 .secciones-cpd,
 .paginas-emitidos {
   display: flex;
@@ -565,6 +661,15 @@ onMounted(actualizarPanel);
   display: flex;
   justify-content: space-between;
   align-items: center;
+  flex-wrap: wrap;
+  gap: 0.75rem;
+  margin-bottom: 0.75rem;
+}
+
+.oficio-acciones {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
 }
 .oficio-ref {
   margin-left: 0.8rem;
@@ -600,6 +705,17 @@ onMounted(actualizarPanel);
   max-width: 44rem;
   max-height: calc(100dvh - 2rem);
   padding: clamp(.75rem, 3vw, 1.5rem);
+  overflow: hidden;
+}
+
+.modal-respuesta .respuesta-campos {
+  overscroll-behavior: contain;
+}
+
+.modal-respuesta .modal-footer {
+  margin-top: 0.5rem;
+  padding-top: 0.75rem;
+  flex-wrap: wrap;
 }
 
 .modal-header {

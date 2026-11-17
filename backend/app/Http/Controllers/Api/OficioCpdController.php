@@ -5,7 +5,6 @@ namespace App\Http\Controllers\Api;
 use App\Http\Controllers\Controller;
 use App\Models\ArchivoSolicitud;
 use App\Models\OficioCpd;
-use App\Models\Periodo;
 use App\Models\Solicitud;
 use App\Services\AuditoriaNotificacionService;
 use App\Services\PagoFacilService;
@@ -131,6 +130,42 @@ class OficioCpdController extends Controller
         });
     }
 
+    public function casosRemitibles(Request $request)
+    {
+        $this->autorizarEmision($request);
+
+        return Solicitud::where('estado', 'APROBADA')
+            ->whereDoesntHave('oficios')
+            ->whereHas('grupos', fn ($query) => $query->where('estado', 'APROBADA'))
+            ->with([
+                'estudiante.usuario:id_usuario,nombre,apellidos',
+                'grupos' => fn ($query) => $query->where('estado', 'APROBADA')->with('grupo.materia'),
+            ])
+            ->orderBy('id')
+            ->get();
+    }
+
+    private function autorizarEmision(Request $request): void
+    {
+        $user = $request->user();
+        abort_unless($user->tieneRol('DIRECTOR') || $user->tieneRol('PERSONAL_ACADEMICO'), 403);
+    }
+
+    public function descargarCsv(Request $request, int $id)
+    {
+        if (!$request->user()->tieneRol('CPD')) {
+            $this->autorizarEmision($request);
+        }
+
+        $oficio = OficioCpd::findOrFail($id);
+        $disco = Storage::disk('local');
+        abort_unless($oficio->ruta_documento && $disco->exists($oficio->ruta_documento), 404, 'El CSV del oficio no está disponible.');
+
+        return $disco->download($oficio->ruta_documento, $oficio->numero_oficio . '.csv', [
+            'Content-Type' => 'text/csv; charset=UTF-8',
+        ]);
+    }
+
     /**
      * CU5: Remisión por Lotes a CPD (OficioCpdService)
      * Busca solicitudes APROBADA con comprobante de pago sin oficio asignado.
@@ -138,10 +173,8 @@ class OficioCpdController extends Controller
      */
     public function generarOficioRemision(Request $request)
     {
+        $this->autorizarEmision($request);
         $user = $request->user();
-        if (!$user->tieneRol('DIRECTOR') && !$user->tieneRol('PERSONAL_ACADEMICO')) {
-            return response()->json(['error' => 'Acceso denegado. Exclusivo para autoridades de carrera.'], 403);
-        }
 
         $validated = $request->validate([
             'id_periodo' => 'required|integer|exists:periodos,id',
@@ -149,7 +182,7 @@ class OficioCpdController extends Controller
             'referencia' => 'required|string|max:200',
             'detalle' => 'nullable|string',
             'solicitudes_ids' => 'required|array|min:1',
-            'solicitudes_ids.*' => 'integer|exists:solicitud,id'
+            'solicitudes_ids.*' => 'required|integer|distinct|exists:solicitud,id'
         ]);
 
         return DB::transaction(function () use ($user, $validated) {
@@ -157,12 +190,18 @@ class OficioCpdController extends Controller
                 ->whereIn('id', $validated['solicitudes_ids'])
                 ->where('id_periodo', $validated['id_periodo'])
                 ->where('estado', 'APROBADA')
-                ->with(['estudiante.usuario', 'estudiante.carrera', 'grupos.grupo.materia', 'archivos'])
+                ->whereDoesntHave('oficios')
+                ->whereHas('grupos', fn ($query) => $query->where('estado', 'APROBADA'))
+                ->with([
+                    'estudiante.usuario', 'estudiante.carrera', 'archivos', 'periodo',
+                    'grupos' => fn ($query) => $query->where('estado', 'APROBADA')->with('grupo.materia')->orderBy('id'),
+                ])
+                ->orderBy('id')
                 ->get();
 
-            if ($solicitudes->isEmpty()) {
+            if ($solicitudes->count() !== count($validated['solicitudes_ids'])) {
                 return response()->json([
-                    'error' => 'Ninguna de las solicitudes seleccionadas cumple con los requisitos (Estado APROBADA con pago).'
+                    'error' => 'El lote cambió o incluye casos de otra gestión. Actualiza la selección y vuelve a intentar.'
                 ], 422);
             }
 
@@ -171,27 +210,8 @@ class OficioCpdController extends Controller
             $randomHex = strtoupper(substr(bin2hex(random_bytes(4)), 0, 8));
             $numeroOficio = "OF-CPD-{$fechaStr}-{$randomHex}";
 
-            // Construir CSV de remisión con codificación UTF-8 BOM
-            $csvRows = [];
-            $csvRows[] = "CODIGO_SOLICITUD,REGISTRO_ESTUDIANTE,NOMBRE_ESTUDIANTE,CARRERA,TIPO_CASO,SIGLA_MATERIA,GRUPO,COMPROBANTE_PAGO";
-
-            foreach ($solicitudes as $sol) {
-                $nombreCompleto = '"' . str_replace('"', '""', $sol->estudiante->usuario->nombre . ' ' . $sol->estudiante->usuario->apellidos) . '"';
-                $reg = $sol->estudiante->registro_universitario;
-                $carrera = '"' . str_replace('"', '""', $sol->estudiante->carrera->nombre ?? '') . '"';
-                $pago = $sol->archivos->where('tipo_archivo', 'COMPROBANTE_PAGO')->first();
-                $rutaPago = $pago ? $pago->ruta_archivo : 'SIN_COMPROBANTE';
-
-                foreach ($sol->grupos as $sg) {
-                    $siglaMat = $sg->grupo->materia->sigla ?? 'N/A';
-                    $siglaGrupo = $sg->grupo->sigla_grupo ?? 'N/A';
-                    $csvRows[] = "{$sol->codigo},{$reg},{$nombreCompleto},{$carrera},{$sol->tipo_caso},{$siglaMat},{$siglaGrupo},{$rutaPago}";
-                }
-            }
-
-            $csvContent = "\xEF\xBB\xBF" . implode("\r\n", $csvRows);
             $rutaDocumento = "oficios_cpd/{$numeroOficio}.csv";
-            Storage::disk('local')->put($rutaDocumento, $csvContent);
+            $csv = $this->construirCsv($solicitudes);
 
             // Crear registro en oficio_cpd
             $oficio = OficioCpd::create([
@@ -224,12 +244,53 @@ class OficioCpdController extends Controller
                 );
             }
 
+            abort_unless(Storage::disk('local')->put($rutaDocumento, $csv), 500, 'No se pudo guardar el CSV del oficio.');
+
             return response()->json([
                 'mensaje' => 'Oficio de remisión a CPD generado exitosamente',
                 'oficio' => $oficio,
                 'solicitudes_remitidas' => $solicitudes->count(),
+                'cupos_remitidos' => $solicitudes->sum(fn (Solicitud $solicitud) => $solicitud->grupos->count()),
             ], 201);
         });
+    }
+
+    private function construirCsv(iterable $solicitudes): string
+    {
+        $archivo = fopen('php://temp', 'w+');
+        try {
+            fwrite($archivo, "\xEF\xBB\xBF");
+            fputcsv($archivo, [
+                'CODIGO_SOLICITUD', 'REGISTRO_ESTUDIANTE', 'NOMBRE_ESTUDIANTE', 'CARRERA', 'TIPO_CASO',
+                'SIGLA_MATERIA', 'GRUPO', 'COMPROBANTE_PAGO', 'NOMBRE_MATERIA', 'GESTION', 'CUPOS',
+            ], ',', '"', '', "\r\n");
+
+            foreach ($solicitudes as $solicitud) {
+                $estudiante = $solicitud->estudiante;
+                $usuario = $estudiante->usuario;
+                $comprobante = $solicitud->archivos->firstWhere('tipo_archivo', 'COMPROBANTE_PAGO');
+
+                foreach ($solicitud->grupos as $asignacion) {
+                    $grupo = $asignacion->grupo;
+                    $fila = [
+                        $solicitud->codigo, $estudiante->registro_universitario,
+                        trim("{$usuario->nombre} {$usuario->apellidos}"), $estudiante->carrera?->nombre,
+                        $solicitud->tipo_caso, $grupo->materia->sigla, $grupo->sigla_grupo,
+                        $comprobante?->nombre_archivo, $grupo->materia->nombre, $solicitud->periodo->gestion, 1,
+                    ];
+                    $fila = array_map(static function ($valor) {
+                        $texto = (string) $valor;
+                        return preg_match('/^\s*[=+@-]|^[\t\r\n]/u', $texto) ? "'" . $texto : $texto;
+                    }, $fila);
+                    fputcsv($archivo, $fila, ',', '"', '', "\r\n");
+                }
+            }
+
+            rewind($archivo);
+            return stream_get_contents($archivo);
+        } finally {
+            fclose($archivo);
+        }
     }
 
     /**

@@ -180,7 +180,7 @@
     <div v-if="submodulo === 'oficios'">
       <div class="sub-header">
         <h3>Emisión de Oficios y CSV para CPD</h3>
-        <button @click="abrirGenerarOficio" class="btn-primary">
+        <button @click="abrirGenerarOficio" class="btn-primary" :disabled="cargandoRemitibles">
           <Plus :size="15" class="inline-icon" /> Generar Nuevo Oficio (CU5)
         </button>
       </div>
@@ -192,7 +192,8 @@
               <th scope="col">Destinatario</th>
               <th scope="col">Referencia</th>
               <th scope="col">Fecha Remisión</th>
-              <th scope="col">Casos Asignados</th>
+              <th scope="col">Casos asignados</th>
+              <th scope="col">Archivo</th>
             </tr>
           </thead>
           <tbody>
@@ -201,7 +202,8 @@
               <td>{{ o.destinatario }}</td>
               <td>{{ o.referencia }}</td>
               <td>{{ formatearFecha(o.fecha_remision) }}</td>
-              <td>{{ o.solicitudes?.length || 0 }} solicitud(es)</td>
+              <td>{{ o.solicitudes?.length || (o.id_solicitud ? 1 : 0) }}</td>
+              <td><DescargarCsvOficio :oficio="o" /></td>
             </tr>
           </tbody>
         </table>
@@ -465,21 +467,39 @@
                 <input v-model="formOficio.referencia" required placeholder="Remisión de casos especiales aprobados con pago" />
               </div>
             </div>
-            <h4 class="section-title">Seleccione los casos APROBADOS a consolidar en este lote:</h4>
+            <div class="form-group">
+              <label for="periodo-oficio">Gestión del lote</label>
+              <select id="periodo-oficio" v-model="formOficio.id_periodo" @change="seleccionarCasosDelPeriodo" required>
+                <option disabled value="">Selecciona una gestión</option>
+                <option v-for="periodo in periodos" :key="periodo.id" :value="periodo.id">{{ periodo.gestion }}</option>
+              </select>
+            </div>
+            <p v-if="cargandoRemitibles" role="status">Cargando casos aprobados...</p>
+            <p v-if="errorOficio" role="alert">{{ errorOficio }}</p>
+            <h4 class="section-title">Casos aprobados disponibles en esta gestión</h4>
             <div class="sol-check-list">
               <div v-for="sol in solicitudesAprobadas" :key="sol.id" class="sol-check-item">
-                <label style="display: flex; align-items: center; gap: 0.5rem; cursor: pointer;">
+                <label class="caso-remitible">
                   <input type="checkbox" :value="sol.id" v-model="formOficio.solicitudes_ids" />
-                  <span><strong>{{ sol.codigo }}</strong> - {{ sol.estudiante?.usuario?.nombre }} {{ sol.estudiante?.usuario?.apellidos }} ({{ sol.tipo_caso }})</span>
+                  <span>
+                    <strong>{{ sol.codigo }}</strong> · {{ sol.estudiante?.usuario?.nombre }} {{ sol.estudiante?.usuario?.apellidos }}
+                    <small>Registro {{ sol.estudiante?.registro_universitario }} · {{ sol.grupos.length }} cupo(s)</small>
+                  </span>
                 </label>
+                <ul class="materias-remitibles">
+                  <li v-for="sg in sol.grupos" :key="sg.id">
+                    {{ sg.grupo?.materia?.sigla }} · {{ sg.grupo?.materia?.nombre }} · Grupo {{ sg.grupo?.sigla_grupo }}
+                  </li>
+                </ul>
               </div>
-              <div v-if="solicitudesAprobadas.length === 0" class="no-records">
-                No hay casos con pago en estado APROBADA listos para remitir.
-              </div>
+              <p v-if="solicitudesAprobadas.length === 0 && !cargandoRemitibles && !errorOficio" class="no-records">
+                No hay casos listos para remitir en esta gestión.
+              </p>
             </div>
+            <ResumenCuposOficio titulo="Cupos seleccionados para remisión" :solicitudes="casosSeleccionados" />
             <div class="modal-footer">
               <button type="button" @click="modalOficio = false" class="btn-secondary">Cancelar</button>
-              <button type="submit" class="btn-primary" :disabled="loading || formOficio.solicitudes_ids.length === 0">
+              <button type="submit" class="btn-primary" :disabled="loading || cargandoRemitibles || casosSeleccionados.length === 0">
                 Emitir Oficio y Generar CSV
               </button>
             </div>
@@ -504,6 +524,8 @@ import {
   Plus, 
   X 
 } from '@lucide/vue';
+import DescargarCsvOficio from '../../components/common/DescargarCsvOficio.vue';
+import ResumenCuposOficio from '../../components/common/ResumenCuposOficio.vue';
 import ExpedienteSolicitudDialog from '../../components/common/ExpedienteSolicitudDialog.vue';
 import api from '../../services/api';
 import EtapasCronograma from '../../components/common/EtapasCronograma.vue';
@@ -554,9 +576,18 @@ const formOficio = ref({ id_periodo: '', destinatario: 'Director CPD - UAGRM', r
 
 const formatearFecha = (f) => f ? new Date(f).toLocaleString('es-BO') : 'N/A';
 
-const solicitudesAprobadas = computed(() => {
-  return solicitudes.value.filter(s => s.estado === 'APROBADA');
-});
+const casosRemitibles = ref([]);
+const cargandoRemitibles = ref(false);
+const errorOficio = ref('');
+
+const solicitudesAprobadas = computed(() =>
+  casosRemitibles.value.filter(s => s.id_periodo === formOficio.value.id_periodo));
+const casosSeleccionados = computed(() =>
+  solicitudesAprobadas.value.filter(s => formOficio.value.solicitudes_ids.includes(s.id)));
+
+const seleccionarCasosDelPeriodo = () => {
+  formOficio.value.solicitudes_ids = solicitudesAprobadas.value.map(s => s.id);
+};
 
 const cargarDatos = async () => {
   try {
@@ -574,7 +605,6 @@ const cargarDatos = async () => {
     oficios.value = resO.data;
     periodos.value = resP.data;
     carreras.value = resC.data;
-    if (periodos.value.length) formOficio.value.id_periodo = periodos.value[0].id;
     if (carreras.value.length) formEstudiante.value.id_carrera = carreras.value[0].id;
   } catch (e) {
     console.error(e);
@@ -762,20 +792,37 @@ const guardarReserva = async () => {
   }
 };
 
-const abrirGenerarOficio = () => {
-  formOficio.value.solicitudes_ids = solicitudesAprobadas.value.map(s => s.id);
+const abrirGenerarOficio = async () => {
+  if (cargandoRemitibles.value) return;
   modalOficio.value = true;
+  cargandoRemitibles.value = true;
+  errorOficio.value = '';
+  casosRemitibles.value = [];
+  formOficio.value.solicitudes_ids = [];
+  try {
+    const { data } = await api.get('/oficios-cpd/casos-remitibles');
+    casosRemitibles.value = data;
+    const periodoConCasos = periodos.value.find(p => data.some(caso => caso.id_periodo === p.id));
+    formOficio.value.id_periodo = periodoConCasos?.id ?? periodos.value[0]?.id ?? '';
+    seleccionarCasosDelPeriodo();
+  } catch {
+    errorOficio.value = 'No se pudieron cargar los casos remitibles. Cierra el oficio y vuelve a abrirlo.';
+  } finally {
+    cargandoRemitibles.value = false;
+  }
 };
 
 const emitirOficio = async () => {
+  if (loading.value || casosSeleccionados.value.length === 0) return;
   loading.value = true;
+  errorOficio.value = '';
   try {
     await api.post('/oficios-cpd/generar', formOficio.value);
     modalOficio.value = false;
     alert('Oficio y archivo CSV emitidos exitosamente hacia CPD.');
     cargarDatos();
   } catch (e) {
-    alert(e.response?.data?.error || 'Error al emitir oficio.');
+    errorOficio.value = e.response?.data?.error || e.response?.data?.message || 'Error al emitir oficio.';
   } finally {
     loading.value = false;
   }
@@ -785,6 +832,24 @@ onMounted(cargarDatos);
 </script>
 
 <style scoped>
+.caso-remitible {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.625rem;
+  cursor: pointer;
+}
+
+.caso-remitible small {
+  display: block;
+  color: var(--text-muted);
+}
+
+.materias-remitibles {
+  margin: 0.375rem 0 0 1.5rem;
+  padding-inline-start: 1rem;
+  font-size: 0.875rem;
+}
+
 .role-view {
   background: var(--surface);
   border-radius: var(--radius-xl);

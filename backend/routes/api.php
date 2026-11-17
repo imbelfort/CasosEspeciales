@@ -64,6 +64,8 @@ Route::middleware([RegistrarBitacoraCpd::class, 'auth:sanctum'])->group(function
     Route::get('/solicitudes/{id}/boletas/{archivo}', [OficioCpdController::class, 'descargarBoleta']);
     Route::post('/solicitudes/{id}/boletas/{archivo}/observar', [OficioCpdController::class, 'observarBoleta']);
     Route::post('/oficios-cpd/generar', [OficioCpdController::class, 'generarOficioRemision']);
+    Route::get('/oficios-cpd/casos-remitibles', [OficioCpdController::class, 'casosRemitibles']);
+    Route::get('/oficios-cpd/{id}/csv', [OficioCpdController::class, 'descargarCsv'])->whereNumber('id');
     Route::get('/oficios-cpd', [OficioCpdController::class, 'listarOficios']);
 
     // MÓDULO DE COBROS Y PAGOS QR (PagoFácil API v2)
@@ -85,6 +87,7 @@ Route::middleware([RegistrarBitacoraCpd::class, 'auth:sanctum'])->group(function
     Route::get('/cpd/oficios-emitidos', [CpdController::class, 'oficiosEmitidos']);
     Route::get('/cpd/pagos-stripe', [CpdController::class, 'pagosStripe']);
     Route::get('/cpd/bitacora', [BitacoraCpdController::class, 'index']);
+    Route::post('/cpd/oficios/{id}/habilitar', [CpdController::class, 'habilitarOficio'])->whereNumber('id');
     Route::post('/cpd/responder', [CpdController::class, 'responder']);
     Route::put('/cpd/periodo/{id}/config', [CpdController::class, 'actualizarPeriodoConfig']);
 
