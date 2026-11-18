@@ -1,0 +1,45 @@
+import { createRouter, createWebHistory } from 'vue-router';
+import LoginView from '../views/auth/LoginView.vue';
+import EstudianteDashboard from '../views/estudiante/EstudianteDashboard.vue';
+import HistorialSolicitudesView from '../views/estudiante/HistorialSolicitudesView.vue';
+import NotificacionesView from '../views/estudiante/NotificacionesView.vue';
+import DireccionDashboard from '../views/direccion/DireccionDashboard.vue';
+import CpdDashboard from '../views/cpd/CpdDashboard.vue';
+import ReportesView from '../views/reportes/ReportesView.vue';
+
+const routes = [
+  { path: '/', redirect: '/login' },
+  { path: '/login', component: LoginView, meta: { guest: true } },
+  
+  // Rutas Estudiante
+  { path: '/estudiante', component: EstudianteDashboard, meta: { auth: true, role: 'ESTUDIANTE' } },
+  { path: '/estudiante/historial', component: HistorialSolicitudesView, meta: { auth: true, role: 'ESTUDIANTE' } },
+  { path: '/estudiante/notificaciones', component: NotificacionesView, meta: { auth: true, role: 'ESTUDIANTE' } },
+
+  // Rutas Administrativas
+  { path: '/direccion', component: DireccionDashboard, meta: { auth: true, roles: ['DIRECTOR', 'PERSONAL_ACADEMICO'] } },
+  { path: '/cpd', component: CpdDashboard, meta: { auth: true, roles: ['CPD', 'DIRECTOR'] } },
+  
+  // Reportes exclusivo Administrativos / CPD
+  { path: '/reportes', component: ReportesView, meta: { auth: true, roles: ['DIRECTOR', 'PERSONAL_ACADEMICO', 'CPD'] } },
+  
+  { path: '/:pathMatch(.*)*', redirect: '/login' }
+];
+
+const router = createRouter({
+  history: createWebHistory(),
+  routes,
+});
+
+router.beforeEach((to, from, next) => {
+  const token = localStorage.getItem('token');
+  if (to.meta.auth && !token) {
+    next('/login');
+  } else if (to.meta.guest && token) {
+    next('/estudiante');
+  } else {
+    next();
+  }
+});
+
+export default router;
