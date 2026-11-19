@@ -2,19 +2,110 @@
   box-sizing: border-box;
 }
 
-:root {
+/* ============================================================
+   1. TEMA 1: INSTITUCIONAL (AZUL FICCT / UAGRM)
+   ============================================================ */
+:root,
+[data-theme="institucional"] {
   --primary: #1e3a8a;
   --primary-hover: #172554;
+  --primary-subtle: #dbeafe;
+  --primary-text: #1e40af;
   --secondary: #0284c7;
   --accent: #2563eb;
   --danger: #dc2626;
   --success: #16a34a;
   --warning: #d97706;
-  --bg: #f1f5f9;
+
+  /* Superficies y Fondos Modo Claro */
+  --bg: #f8fafc;
   --surface: #ffffff;
+  --surface-alt: #f1f5f9;
   --text: #0f172a;
   --text-muted: #64748b;
-  --border: #e2e8f0;
+  --border: #cbd5e1;
+  --border-focus: #1e3a8a;
+  --shadow-color: rgba(15, 23, 42, 0.08);
+
+  --font-scale: 1;
+}
+
+/* ============================================================
+   2. TEMA 2: ESMERALDA ACADÉMICO (VERDE)
+   ============================================================ */
+[data-theme="esmeralda"] {
+  --primary: #065f46;
+  --primary-hover: #064e3b;
+  --primary-subtle: #d1fae5;
+  --primary-text: #065f46;
+  --secondary: #0d9488;
+  --accent: #059669;
+  --border-focus: #059669;
+}
+
+/* ============================================================
+   3. TEMA 3: PÚRPURA TECNOLÓGICO (VIOLETA)
+   ============================================================ */
+[data-theme="purpura"] {
+  --primary: #581c87;
+  --primary-hover: #3b0764;
+  --primary-subtle: #ede9fe;
+  --primary-text: #581c87;
+  --secondary: #7c3aed;
+  --accent: #9333ea;
+  --border-focus: #9333ea;
+}
+
+/* ============================================================
+   4. MODO OSCURO GLOBAL COMPLETO (DARK MODE)
+   ============================================================ */
+[data-mode="dark"],
+.dark {
+  --bg: #090d16;
+  --surface: #111827;
+  --surface-alt: #1a2234;
+  --text: #f9fafb;
+  --text-muted: #9ca3af;
+  --border: #2e384d;
+  --shadow-color: rgba(0, 0, 0, 0.6);
+}
+
+/* Adaptación de Botones y Acentos en Modo Oscuro según el Tema */
+[data-mode="dark"][data-theme="institucional"],
+.dark[data-theme="institucional"] {
+  --primary: #3b82f6;
+  --primary-hover: #2563eb;
+  --primary-subtle: #1e3a8a;
+  --primary-text: #93c5fd;
+  --border-focus: #60a5fa;
+}
+
+[data-mode="dark"][data-theme="esmeralda"],
+.dark[data-theme="esmeralda"] {
+  --primary: #10b981;
+  --primary-hover: #059669;
+  --primary-subtle: #064e3b;
+  --primary-text: #a7f3d0;
+  --border-focus: #34d399;
+}
+
+[data-mode="dark"][data-theme="purpura"],
+.dark[data-theme="purpura"] {
+  --primary: #a855f7;
+  --primary-hover: #9333ea;
+  --primary-subtle: #581c87;
+  --primary-text: #e9d5ff;
+  --border-focus: #c084fc;
+}
+
+/* ============================================================
+   5. APLICACIÓN GLOBAL A LA ESTRUCTURA Y TEXTOS
+   ============================================================ */
+html {
+  font-size: 16px;
+  transition: background-color 0.25s ease, color 0.25s ease;
+  background-color: var(--bg);
+  color: var(--text);
 }
 
 body {
@@ -22,9 +113,201 @@ body {
   font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
   background-color: var(--bg);
   color: var(--text);
+  font-size: calc(1rem * var(--font-scale, 1));
   -webkit-font-smoothing: antialiased;
 }
 
-button {
+h1, h2, h3, h4, h5, h6, strong, p, span, label, div {
+  color: inherit;
+}
+
+/* ============================================================
+   6. INPUTS, SELECTS Y TEXTAREAS (MODO OSCURO NATIVO)
+   ============================================================ */
+input, select, textarea {
   font-family: inherit;
+  font-size: inherit;
+  background-color: var(--surface) !important;
+  color: var(--text) !important;
+  border: 1px solid var(--border) !important;
+  border-radius: 6px;
+  transition: border-color 0.2s, box-shadow 0.2s, background-color 0.2s;
+}
+
+input:focus, select:focus, textarea:focus {
+  outline: none;
+  border-color: var(--border-focus) !important;
+  box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.25) !important;
+}
+
+input::placeholder, textarea::placeholder {
+  color: var(--text-muted) !important;
+  opacity: 0.8;
+}
+
+/* Select options en modo oscuro */
+select option {
+  background-color: var(--surface) !important;
+  color: var(--text) !important;
+}
+
+/* ============================================================
+   7. BOTONES ADAPTATIVOS
+   ============================================================ */
+.btn-primary,
+.btn-full {
+  background-color: var(--primary) !important;
+  color: #ffffff !important;
+  border: none !important;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background-color 0.2s, transform 0.1s;
+}
+
+.btn-primary:hover,
+.btn-full:hover {
+  background-color: var(--primary-hover) !important;
+}
+
+.btn-primary:active,
+.btn-full:active {
+  transform: scale(0.98);
+}
+
+.btn-secondary {
+  background-color: var(--surface-alt) !important;
+  color: var(--text) !important;
+  border: 1px solid var(--border) !important;
+  cursor: pointer;
+}
+
+.btn-secondary:hover {
+  background-color: var(--border) !important;
+}
+
+.btn-action {
+  background-color: var(--surface-alt) !important;
+  color: var(--text) !important;
+  border: 1px solid var(--border) !important;
+  cursor: pointer;
+}
+
+.btn-action:hover {
+  border-color: var(--primary) !important;
+  color: var(--primary) !important;
+}
+
+.btn-add,
+.btn-eval {
+  background-color: var(--primary-subtle) !important;
+  color: var(--primary-text) !important;
+  border-color: var(--primary) !important;
+}
+
+.btn-pay {
+  background-color: rgba(22, 163, 74, 0.15) !important;
+  color: #16a34a !important;
+  border-color: rgba(22, 163, 74, 0.4) !important;
+}
+
+[data-mode="dark"] .btn-pay {
+  background-color: rgba(22, 163, 74, 0.25) !important;
+  color: #4ade80 !important;
+}
+
+/* Navegación por pestañas */
+.nav-link.router-link-active,
+.nav-link.active,
+.btn-sub.active {
+  background-color: var(--primary) !important;
+  color: #ffffff !important;
+  border-color: var(--primary) !important;
+}
+
+.nav-link,
+.btn-sub {
+  background-color: var(--surface) !important;
+  color: var(--text-muted) !important;
+  border: 1px solid var(--border) !important;
+}
+
+.nav-link:hover,
+.btn-sub:hover {
+  background-color: var(--surface-alt) !important;
+  color: var(--text) !important;
+}
+
+/* ============================================================
+   8. SUPERFICIES, PANELES Y TARJETAS
+   ============================================================ */
+.role-view,
+.auth-card,
+.modal-box,
+.stat-card,
+.metric-card,
+.oficio-card,
+.historial-card,
+.notif-card,
+.role-nav-bar {
+  background-color: var(--surface) !important;
+  color: var(--text) !important;
+  border: 1px solid var(--border) !important;
+  box-shadow: 0 4px 6px -1px var(--shadow-color) !important;
+}
+
+.auth-header,
+.data-table th,
+.sol-check-list {
+  background-color: var(--surface-alt) !important;
+  color: var(--text-muted) !important;
+  border-color: var(--border) !important;
+}
+
+.data-table td {
+  border-color: var(--border) !important;
+  color: var(--text) !important;
+}
+
+.data-table tr:hover td {
+  background-color: var(--surface-alt) !important;
+}
+
+.code-tag,
+.badge-sm {
+  background-color: var(--surface-alt) !important;
+  color: var(--text) !important;
+  border: 1px solid var(--border) !important;
+}
+
+.box-note,
+.box-note-eval,
+.demo-accounts {
+  background-color: var(--surface-alt) !important;
+  border-color: var(--border) !important;
+  color: var(--text) !important;
+}
+
+.clean-list li,
+.sol-check-item,
+.modal-header,
+.modal-footer {
+  border-color: var(--border) !important;
+}
+
+.timeline {
+  border-left-color: var(--border) !important;
+}
+
+.timeline-dot {
+  background-color: var(--primary) !important;
+}
+
+.alert-box-info {
+  background-color: var(--primary-subtle) !important;
+  border-left: 4px solid var(--primary) !important;
+  color: var(--primary-text) !important;
+}
+
+.text-muted {
+  color: var(--text-muted) !important;
 }

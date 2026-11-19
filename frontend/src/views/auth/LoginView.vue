@@ -83,25 +83,26 @@ const handleLogin = async () => {
   padding: 3rem 1rem;
 }
 .auth-card {
-  background: white;
+  background: var(--surface);
   border-radius: 12px;
-  box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.1);
+  box-shadow: 0 10px 25px -5px var(--shadow-color);
   width: 100%;
   max-width: 480px;
   overflow: hidden;
-  border: 1px solid #e2e8f0;
+  border: 1px solid var(--border);
+  color: var(--text);
 }
 .auth-header {
   text-align: center;
   padding: 2rem 2rem 1rem 2rem;
-  background: #f8fafc;
-  border-bottom: 1px solid #e2e8f0;
+  background: var(--surface-alt);
+  border-bottom: 1px solid var(--border);
 }
 .logo-circle {
   width: 50px;
   height: 50px;
-  background: #1e3a8a;
-  color: white;
+  background: var(--primary);
+  color: #ffffff;
   font-weight: 800;
   display: flex;
   align-items: center;
@@ -113,11 +114,11 @@ const handleLogin = async () => {
 }
 .auth-header h2 {
   font-size: 1.25rem;
-  color: #0f172a;
+  color: var(--text);
   margin: 0 0 0.5rem 0;
 }
 .auth-desc {
-  color: #64748b;
+  color: var(--text-muted);
   font-size: 0.85rem;
   margin: 0;
   line-height: 1.4;
@@ -133,7 +134,7 @@ const handleLogin = async () => {
   font-size: 0.85rem;
   font-weight: 600;
   margin-bottom: 0.4rem;
-  color: #334155;
+  color: var(--text);
 }
 .input-with-icon {
   position: relative;
@@ -143,21 +144,28 @@ const handleLogin = async () => {
 .field-icon {
   position: absolute;
   left: 0.8rem;
-  color: #94a3b8;
+  color: var(--text-muted);
   pointer-events: none;
 }
 .input-with-icon input {
   width: 100%;
-  padding: 0.7rem 0.8rem 0.7rem 2.4rem;
-  border: 1px solid #cbd5e1;
+  padding: 0.75rem 0.8rem 0.75rem 2.4rem;
+  border: 1px solid var(--border);
   border-radius: 6px;
   font-size: 0.95rem;
+  background-color: var(--surface);
+  color: var(--text);
+}
+.input-with-icon input:focus {
+  outline: none;
+  border-color: var(--border-focus);
+  box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.2);
 }
 .btn-full {
   width: 100%;
-  background: #1e3a8a;
-  color: white;
-  padding: 0.8rem;
+  background: var(--primary);
+  color: #ffffff;
+  padding: 0.85rem;
   border: none;
   border-radius: 6px;
   font-size: 0.95rem;
@@ -168,6 +176,10 @@ const handleLogin = async () => {
   align-items: center;
   justify-content: center;
   gap: 0.4rem;
+  transition: background-color 0.2s;
+}
+.btn-full:hover {
+  background: var(--primary-hover);
 }
 .btn-icon {
   flex-shrink: 0;
@@ -175,24 +187,27 @@ const handleLogin = async () => {
 .demo-accounts {
   margin-top: 1.5rem;
   padding-top: 1.2rem;
-  border-top: 1px solid #e2e8f0;
+  border-top: 1px solid var(--border);
+  background: transparent;
 }
 .demo-accounts h4 {
   font-size: 0.8rem;
-  color: #475569;
+  color: var(--text);
   margin: 0 0 0.5rem 0;
 }
 .demo-accounts ul {
   margin: 0;
   padding-left: 1.2rem;
   font-size: 0.8rem;
-  color: #64748b;
+  color: var(--text-muted);
 }
 .demo-accounts li {
   margin-bottom: 0.2rem;
 }
 .demo-accounts code {
-  background: #f1f5f9;
+  background: var(--surface-alt);
+  color: var(--text);
+  border: 1px solid var(--border);
   padding: 0.1rem 0.3rem;
   border-radius: 4px;
 }
