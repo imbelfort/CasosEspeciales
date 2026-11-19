@@ -9,10 +9,10 @@ use App\Http\Controllers\Api\NotificacionController;
 use App\Http\Controllers\Api\OficioCpdController;
 use App\Http\Controllers\Api\ReporteController;
 use App\Http\Controllers\Api\SolicitudController;
+use App\Http\Controllers\Api\UsuarioAdminController;
 use Illuminate\Support\Facades\Route;
 
 // Rutas Públicas (Auth y Catálogos iniciales)
-Route::post('/auth/registro-estudiante', [AuthController::class, 'registrarEstudiante']);
 Route::post('/auth/login', [AuthController::class, 'login'])->name('login');
 
 Route::get('/catalogos/carreras', [CatalogoController::class, 'carreras']);
@@ -25,7 +25,13 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::get('/auth/me', [AuthController::class, 'me']);
     Route::post('/auth/logout', [AuthController::class, 'logout']);
 
-    // CU2: Solicitudes
+    // CU1: Gestión de Usuarios y Roles (Exclusivo Dirección / Personal Académico)
+    Route::get('/admin/usuarios', [UsuarioAdminController::class, 'listar']);
+    Route::post('/admin/usuarios/estudiante', [UsuarioAdminController::class, 'registrarEstudiante']);
+    Route::post('/admin/usuarios/personal', [UsuarioAdminController::class, 'registrarPersonal']);
+    Route::patch('/admin/usuarios/{id}/estado', [UsuarioAdminController::class, 'cambiarEstado']);
+
+    // CU2: Solicitudes (Registro por Estudiante)
     Route::post('/solicitudes', [SolicitudController::class, 'registrar']);
     Route::post('/solicitudes/{id}/grupos', [SolicitudController::class, 'agregarGrupo']);
     Route::post('/solicitudes/{id}/archivos', [SolicitudController::class, 'adjuntarArchivo']);

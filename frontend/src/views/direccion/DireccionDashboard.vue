@@ -2,10 +2,15 @@
   <div class="role-view">
     <div class="view-header">
       <div>
-        <h2>Panel de Dirección de Carrera (CU3, CU4, CU5)</h2>
-        <p class="view-desc">Evaluación resolutiva, bloqueo transaccional de cupos y emisión de oficios por lotes a CPD.</p>
+        <h2>Panel de Dirección de Carrera (CU1, CU3, CU4, CU5)</h2>
+        <p class="view-desc">
+          Gestión de usuarios/estudiantes, evaluación resolutiva de solicitudes, control transaccional de cupos y remisión de oficios a CPD.
+        </p>
       </div>
       <div class="header-actions">
+        <button @click="submodulo = 'usuarios'" :class="{ active: submodulo === 'usuarios' }" class="btn-sub">
+          <Users :size="15" class="inline-icon" /> Alumnos y Usuarios (CU1)
+        </button>
         <button @click="submodulo = 'solicitudes'" :class="{ active: submodulo === 'solicitudes' }" class="btn-sub">
           <FileCheck :size="15" class="inline-icon" /> Solicitudes (CU3)
         </button>
@@ -15,6 +20,49 @@
         <button @click="submodulo = 'oficios'" :class="{ active: submodulo === 'oficios' }" class="btn-sub">
           <Send :size="15" class="inline-icon" /> Oficios a CPD (CU5)
         </button>
+      </div>
+    </div>
+
+    <!-- SUBMODULO 0: GESTION DE ALUMNOS Y USUARIOS (CU1) -->
+    <div v-if="submodulo === 'usuarios'">
+      <div class="sub-header">
+        <div>
+          <h3>Directorio de Usuarios y Estudiantes Matriculados (CU1)</h3>
+          <p class="text-muted">Registro administrativo de alumnos con los 11 campos estipulados y gestión de estado.</p>
+        </div>
+        <button @click="modalEstudiante = true" class="btn-primary">
+          <UserPlus :size="15" class="inline-icon" /> Matricular Nuevo Alumno (CU1)
+        </button>
+      </div>
+
+      <div class="table-responsive">
+        <table class="data-table">
+          <thead>
+            <tr>
+              <th>C.I.</th>
+              <th>Estudiante / Nombre</th>
+              <th>Registro Univ.</th>
+              <th>Carrera</th>
+              <th>Semestre</th>
+              <th>Correo Institucional</th>
+              <th>Estado</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr v-for="u in usuarios" :key="u.id_usuario">
+              <td><strong>{{ u.ci }}</strong></td>
+              <td>{{ u.nombre }} {{ u.apellidos }}</td>
+              <td><span class="code-tag">{{ u.estudiante?.registro_universitario || 'N/A' }}</span></td>
+              <td>{{ u.estudiante?.carrera?.nombre || 'Administración' }}</td>
+              <td>{{ u.estudiante ? `Semestre ${u.estudiante.semestre_actual}` : '-' }}</td>
+              <td>{{ u.email }}</td>
+              <td><span :class="['status-badge', u.estado]">{{ u.estado }}</span></td>
+            </tr>
+            <tr v-if="usuarios.length === 0">
+              <td colspan="7" class="no-records">No hay usuarios cargados en este momento.</td>
+            </tr>
+          </tbody>
+        </table>
       </div>
     </div>
 
@@ -117,6 +165,87 @@
             </tr>
           </tbody>
         </table>
+      </div>
+    </div>
+
+    <!-- MODAL MATRICULAR ALUMNO (CU1 - 11 CAMPOS) -->
+    <div v-if="modalEstudiante" class="modal-backdrop">
+      <div class="modal-box modal-lg">
+        <div class="modal-header">
+          <h3>CU1: Matricular Nuevo Alumno</h3>
+          <button @click="modalEstudiante = false" class="btn-close"><X :size="18" /></button>
+        </div>
+        <form @submit.prevent="guardarEstudiante" class="modal-form">
+          <p class="auth-desc">Registro administrativo con validación estricta de los 11 campos institucionales.</p>
+          
+          <div class="row">
+            <div class="form-group col">
+              <label>Nombres (*):</label>
+              <input v-model="formEstudiante.nombre" required placeholder="Carlos Eduardo" />
+            </div>
+            <div class="form-group col">
+              <label>Apellidos (*):</label>
+              <input v-model="formEstudiante.apellidos" required placeholder="Méndez Vargas" />
+            </div>
+          </div>
+
+          <div class="row">
+            <div class="form-group col">
+              <label>Cédula de Identidad (CI) (*):</label>
+              <input v-model="formEstudiante.ci" required placeholder="7890123" />
+            </div>
+            <div class="form-group col">
+              <label>Registro Universitario (RU) (*):</label>
+              <input v-model="formEstudiante.registro_universitario" required placeholder="221098451" />
+            </div>
+          </div>
+
+          <div class="row">
+            <div class="form-group col">
+              <label>Correo Electrónico (*):</label>
+              <input v-model="formEstudiante.email" type="email" required placeholder="carlos.mendez@ficct.uagrm.edu.bo" />
+            </div>
+            <div class="form-group col">
+              <label>Teléfono (*):</label>
+              <input v-model="formEstudiante.telefono" required placeholder="78945612" />
+            </div>
+          </div>
+
+          <div class="form-group">
+            <label>Dirección de Residencia (*):</label>
+            <input v-model="formEstudiante.direccion" required placeholder="Barrio Las Palmas Calle 3 #45" />
+          </div>
+
+          <div class="row">
+            <div class="form-group col">
+              <label>Fecha de Nacimiento (*):</label>
+              <input v-model="formEstudiante.fecha_nacimiento" type="date" required />
+            </div>
+            <div class="form-group col">
+              <label>Carrera Asignada (*):</label>
+              <select v-model="formEstudiante.id_carrera" required>
+                <option value="" disabled>Seleccione Carrera...</option>
+                <option v-for="c in carreras" :key="c.id" :value="c.id">{{ c.nombre }} ({{ c.codigo }})</option>
+              </select>
+            </div>
+            <div class="form-group col">
+              <label>Semestre (1-12) (*):</label>
+              <input v-model.number="formEstudiante.semestre" type="number" min="1" max="12" required />
+            </div>
+          </div>
+
+          <div class="form-group">
+            <label>Contraseña Inicial (*):</label>
+            <input v-model="formEstudiante.password" type="password" required minlength="6" placeholder="Mínimo 6 caracteres" />
+          </div>
+
+          <div class="modal-footer">
+            <button type="button" @click="modalEstudiante = false" class="btn-secondary">Cancelar</button>
+            <button type="submit" class="btn-primary" :disabled="loading">
+              <UserPlus :size="15" class="inline-icon" /> Registrar y Matricular Alumno
+            </button>
+          </div>
+        </form>
       </div>
     </div>
 
@@ -230,6 +359,8 @@
 <script setup>
 import { ref, onMounted, computed } from 'vue';
 import { 
+  Users,
+  UserPlus,
   FileCheck, 
   Lock, 
   Send, 
@@ -240,17 +371,34 @@ import {
 } from '@lucide/vue';
 import api from '../../services/api';
 
-const submodulo = ref('solicitudes');
+const submodulo = ref('usuarios');
+const usuarios = ref([]);
 const solicitudes = ref([]);
 const grupos = ref([]);
 const oficios = ref([]);
 const periodos = ref([]);
+const carreras = ref([]);
 const loading = ref(false);
 
+const modalEstudiante = ref(false);
 const modalEvaluar = ref(false);
 const modalReserva = ref(false);
 const modalOficio = ref(false);
 const solicitudActiva = ref(null);
+
+const formEstudiante = ref({
+  nombre: '',
+  apellidos: '',
+  ci: '',
+  registro_universitario: '',
+  email: '',
+  telefono: '',
+  direccion: '',
+  fecha_nacimiento: '',
+  id_carrera: '',
+  semestre: 1,
+  password: 'password123',
+});
 
 const formEval = ref({ decision: 'APROBADA', justificacion: '', motivo_rechazo: '' });
 const formReserva = ref({ id_grupo: '', cantidad: 1, motivo: '' });
@@ -264,19 +412,51 @@ const solicitudesAprobadas = computed(() => {
 
 const cargarDatos = async () => {
   try {
-    const [resS, resG, resO, resP] = await Promise.all([
+    const [resU, resS, resG, resO, resP, resC] = await Promise.all([
+      api.get('/admin/usuarios?rol=ESTUDIANTE'),
       api.get('/solicitudes'),
       api.get('/cupos/grupos'),
       api.get('/oficios-cpd'),
-      api.get('/catalogos/periodos')
+      api.get('/catalogos/periodos'),
+      api.get('/catalogos/carreras')
     ]);
+    usuarios.value = resU.data.data || resU.data;
     solicitudes.value = resS.data.data || resS.data;
     grupos.value = resG.data;
     oficios.value = resO.data;
     periodos.value = resP.data;
+    carreras.value = resC.data;
     if (periodos.value.length) formOficio.value.id_periodo = periodos.value[0].id;
+    if (carreras.value.length) formEstudiante.value.id_carrera = carreras.value[0].id;
   } catch (e) {
     console.error(e);
+  }
+};
+
+const guardarEstudiante = async () => {
+  loading.value = true;
+  try {
+    await api.post('/admin/usuarios/estudiante', formEstudiante.value);
+    modalEstudiante.value = false;
+    formEstudiante.value = {
+      nombre: '',
+      apellidos: '',
+      ci: '',
+      registro_universitario: '',
+      email: '',
+      telefono: '',
+      direccion: '',
+      fecha_nacimiento: '',
+      id_carrera: carreras.value[0]?.id || '',
+      semestre: 1,
+      password: 'password123',
+    };
+    alert('Alumno registrado y matriculado con éxito en la base de datos.');
+    cargarDatos();
+  } catch (e) {
+    alert(e.response?.data?.message || 'Error al registrar alumno.');
+  } finally {
+    loading.value = false;
   }
 };
 
@@ -350,10 +530,13 @@ onMounted(cargarDatos);
   justify-content: space-between;
   align-items: center;
   margin-bottom: 1.5rem;
+  flex-wrap: wrap;
+  gap: 1rem;
 }
 .header-actions {
   display: flex;
   gap: 0.5rem;
+  flex-wrap: wrap;
 }
 .btn-sub {
   padding: 0.5rem 1rem;
@@ -411,6 +594,7 @@ onMounted(cargarDatos);
 .status-badge.APROBADA { background: #dcfce7; color: #15803d; }
 .status-badge.RECHAZADA_DIRECCION { background: #fee2e2; color: #b91c1c; }
 .status-badge.REMITIDA_A_CPD { background: #f3e8ff; color: #7e22ce; }
+.status-badge.ACTIVO { background: #dcfce7; color: #15803d; }
 .btn-action {
   padding: 0.35rem 0.7rem;
   border: 1px solid #cbd5e1;
@@ -461,6 +645,8 @@ onMounted(cargarDatos);
   border: 1px solid #cbd5e1;
   border-radius: 6px;
 }
+.row { display: flex; gap: 1rem; }
+.col { flex: 1; }
 .sol-check-list {
   max-height: 200px;
   overflow-y: auto;
@@ -471,5 +657,10 @@ onMounted(cargarDatos);
 .sol-check-item {
   padding: 0.4rem;
   border-bottom: 1px solid #f1f5f9;
+}
+.auth-desc {
+  color: #64748b;
+  font-size: 0.85rem;
+  margin-bottom: 1rem;
 }
 </style>
