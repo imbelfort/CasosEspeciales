@@ -45,41 +45,33 @@ class EvaluacionController extends Controller
                 ], 422);
             }
 
-            $nuevoEstado = match ($validated['decision']) {
-                'APROBADA' => 'APROBADA_DIRECCION',
-                'RECHAZADA' => 'RECHAZADA_DIRECCION',
-                'OBSERVADA' => 'OBSERVADA',
-            };
-
-            $solicitud->fecha_revision = now();
-            $solicitud->id_revisor = $user->id_usuario;
-            if ($validated['decision'] === 'RECHAZADA') {
-                $solicitud->motivo_rechazo = $validated['motivo_rechazo'];
-            }
-            $solicitud->observaciones = $validated['observaciones'] ?? null;
-            $solicitud->save();
-
-            // Guardar o actualizar registro en evaluacion_solicitud
-            EvaluacionSolicitud::updateOrCreate(
-                ['id_solicitud' => $solicitud->id],
-                [
-                    'id_evaluador' => $user->id_usuario,
-                    'decision' => $validated['decision'],
-                    'justificacion' => $validated['justificacion'] ?? null,
-                    'observaciones' => $validated['observaciones'] ?? null,
-                    'fecha_evaluacion' => now(),
-                ]
-            );
-
             // Actualizar resolución granular por materia solicitada (de 5 pueden aprobar 2, 3, etc.)
+            $decisionFinal = $validated['decision'];
+            $motivoRechazoFinal = $validated['motivo_rechazo'] ?? null;
+
             if (!empty($validated['materias_resolucion'])) {
+                $totalMaterias = count($validated['materias_resolucion']);
+                $aprobadasCount = 0;
+
                 foreach ($validated['materias_resolucion'] as $mr) {
+                    if ($mr['estado'] === 'APROBADA') {
+                        $aprobadasCount++;
+                    }
+
                     \App\Models\SolicitudGrupo::where('id', $mr['id'])
                         ->where('id_solicitud', $solicitud->id)
                         ->update([
                             'estado' => $mr['estado'],
                             'observacion_resolucion' => $mr['observacion'] ?? null
                         ]);
+                }
+
+                // REGLA CRÍTICA: Si todas las materias fueron rechazadas (0 aprobadas), el caso especial NO puede ser APROBADO
+                if ($aprobadasCount === 0 && $decisionFinal === 'APROBADA') {
+                    $decisionFinal = 'RECHAZADA';
+                    if (empty($motivoRechazoFinal)) {
+                        $motivoRechazoFinal = 'Todas las materias solicitadas fueron rechazadas por Dirección.';
+                    }
                 }
             } else {
                 // Si la decisión es APROBADA general, marcar grupos como APROBADA
@@ -92,11 +84,37 @@ class EvaluacionController extends Controller
                 }
             }
 
+            $nuevoEstado = match ($decisionFinal) {
+                'APROBADA' => 'APROBADA_DIRECCION',
+                'RECHAZADA' => 'RECHAZADA_DIRECCION',
+                'OBSERVADA' => 'OBSERVADA',
+            };
+
+            $solicitud->fecha_revision = now();
+            $solicitud->id_revisor = $user->id_usuario;
+            if ($decisionFinal === 'RECHAZADA') {
+                $solicitud->motivo_rechazo = $motivoRechazoFinal;
+            }
+            $solicitud->observaciones = $validated['observaciones'] ?? null;
+            $solicitud->save();
+
+            // Guardar o actualizar registro en evaluacion_solicitud
+            EvaluacionSolicitud::updateOrCreate(
+                ['id_solicitud' => $solicitud->id],
+                [
+                    'id_evaluador' => $user->id_usuario,
+                    'decision' => $decisionFinal,
+                    'justificacion' => $validated['justificacion'] ?? null,
+                    'observaciones' => $validated['observaciones'] ?? null,
+                    'fecha_evaluacion' => now(),
+                ]
+            );
+
             // Mensajes de notificación según decisión
-            $asunto = "Resolución de Solicitud {$solicitud->codigo}: {$validated['decision']}";
-            $mensaje = match ($validated['decision']) {
+            $asunto = "Resolución de Solicitud {$solicitud->codigo}: {$decisionFinal}";
+            $mensaje = match ($decisionFinal) {
                 'APROBADA' => "Su solicitud ha sido APROBADA por Dirección de Carrera. Por favor efectúe el pago del arancel correspondiente y suba el comprobante.",
-                'RECHAZADA' => "Su solicitud ha sido RECHAZADA por Dirección. Motivo: " . ($validated['motivo_rechazo'] ?? 'No especificado.'),
+                'RECHAZADA' => "Su solicitud ha sido RECHAZADA por Dirección. Motivo: " . ($motivoRechazoFinal ?? 'No especificado.'),
                 'OBSERVADA' => "Su solicitud tiene observaciones: " . ($validated['observaciones'] ?? 'Revise los requisitos pendientes.'),
             };
 
@@ -106,7 +124,7 @@ class EvaluacionController extends Controller
                 $nuevoEstado,
                 'EVALUACION_DIRECCION',
                 $user->id_usuario,
-                "Evaluación registrada: {$validated['decision']}. " . ($validated['justificacion'] ?? ''),
+                "Evaluación registrada: {$decisionFinal}. " . ($validated['justificacion'] ?? ''),
                 $asunto,
                 $mensaje
             );

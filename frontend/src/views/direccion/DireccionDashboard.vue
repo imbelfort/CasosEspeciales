@@ -110,10 +110,18 @@
     <!-- SUBMODULO 2: CONTROL Y RESERVA DE CUPOS CU4 -->
     <div v-if="submodulo === 'cupos'">
       <div class="sub-header">
-        <h3>Grupos y Reservas con Bloqueo Transaccional (FOR UPDATE)</h3>
-        <button @click="modalReserva = true" class="btn-primary">
-          <Plus :size="15" class="inline-icon" /> Reservar / Bloquear Cupo
-        </button>
+        <div>
+          <h3>Grupos y Reservas con Bloqueo Transaccional (FOR UPDATE)</h3>
+          <p class="text-muted">Si un grupo tiene 0 cupos, se puede habilitar sobrecupo (+5, +10) para casos especiales o reservar cupos existentes.</p>
+        </div>
+        <div style="display: flex; gap: 0.5rem;">
+          <button @click="abrirModalAmpliar" class="btn-secondary">
+            <Plus :size="15" class="inline-icon" /> Habilitar Sobrecupo (+ Cupos)
+          </button>
+          <button @click="modalReserva = true" class="btn-primary">
+            <Lock :size="15" class="inline-icon" /> Reservar / Bloquear Cupo
+          </button>
+        </div>
       </div>
       <div class="table-responsive">
         <table class="data-table">
@@ -124,6 +132,7 @@
               <th>Cupo Máximo</th>
               <th>Cupos Libres</th>
               <th>Estado</th>
+              <th>Acción Rápida</th>
             </tr>
           </thead>
           <tbody>
@@ -131,8 +140,18 @@
               <td><strong>{{ g.materia?.sigla }}</strong> - {{ g.materia?.nombre }}</td>
               <td><span class="code-tag">{{ g.sigla_grupo }}</span></td>
               <td>{{ g.cupo_maximo }}</td>
-              <td><strong>{{ g.cupos_disponibles }}</strong></td>
+              <td>
+                <span :style="{ color: g.cupos_disponibles === 0 ? '#dc2626' : '#16a34a', fontWeight: 'bold' }">
+                  {{ g.cupos_disponibles }}
+                </span>
+                <span v-if="g.cupos_disponibles === 0" style="font-size: 0.75rem; background: #fee2e2; color: #991b1b; padding: 2px 6px; border-radius: 4px; margin-left: 6px;">AGOTADO</span>
+              </td>
               <td><span class="status-badge ABIERTO">{{ g.estado }}</span></td>
+              <td>
+                <button @click="seleccionarGrupoParaAmpliar(g)" class="btn-action">
+                  + Habilitar Cupos
+                </button>
+              </td>
             </tr>
           </tbody>
         </table>
@@ -262,7 +281,7 @@
         <form @submit.prevent="ejecutarEvaluacion" class="modal-form">
           <div class="form-group">
             <label>Decisión Formal (*):</label>
-            <select v-model="formEval.decision" required>
+            <select v-model="formEval.decision" @change="cambiarDecisionGeneral" required>
               <option value="APROBADA">APROBADA (Habilita pago de arancel)</option>
               <option value="RECHAZADA">RECHAZADA</option>
               <option value="OBSERVADA">OBSERVADA</option>
@@ -285,7 +304,7 @@
                   <tr v-for="sg in formEvalMaterias" :key="sg.id">
                     <td><strong>{{ sg.materia_sigla }}</strong> (Gr. {{ sg.sigla_grupo }})</td>
                     <td>
-                      <select v-model="sg.estado" class="form-control-sm">
+                      <select v-model="sg.estado" @change="verificarEstadoMaterias" class="form-control-sm">
                         <option value="APROBADA">APROBADA</option>
                         <option value="RECHAZADA">RECHAZADA</option>
                         <option value="PENDIENTE">PENDIENTE</option>
@@ -298,7 +317,7 @@
                 </tbody>
               </table>
             </div>
-            <small class="text-muted">La Dirección puede aprobar un subconjunto de las materias solicitadas por el estudiante.</small>
+            <small class="text-muted">Si todas las materias quedan rechazadas, el caso especial pasa automáticamente a RECHAZADO.</small>
           </div>
           <div v-if="formEval.decision === 'RECHAZADA'" class="form-group">
             <label>Motivo de Rechazo (*):</label>
@@ -344,6 +363,42 @@
           <div class="modal-footer">
             <button type="button" @click="modalReserva = false" class="btn-secondary">Cancelar</button>
             <button type="submit" class="btn-primary" :disabled="loading">Ejecutar Reserva</button>
+          </div>
+        </form>
+      </div>
+    </div>
+
+    <!-- MODAL HABILITAR SOBRECUPO (AMPLIACIÓN DE CUPOS) -->
+    <div v-if="modalAmpliarCupos" class="modal-backdrop">
+      <div class="modal-box">
+        <div class="modal-header">
+          <h3>Habilitar Cupos Extra / Sobrecupo</h3>
+          <button @click="modalAmpliarCupos = false" class="btn-close"><X :size="18" /></button>
+        </div>
+        <form @submit.prevent="guardarAmpliacionCupos" class="modal-form">
+          <p class="text-muted" style="margin-bottom: 1rem;">
+            Aumenta el cupo máximo y disponible para materias solicitadas por casos especiales (ej: añadir 5 o 10 cupos más).
+          </p>
+          <div class="form-group">
+            <label>Grupo a Ampliar (*):</label>
+            <select v-model="formAmpliar.id_grupo" required>
+              <option value="" disabled>Seleccione grupo...</option>
+              <option v-for="g in grupos" :key="g.id" :value="g.id">
+                {{ g.materia?.sigla }} - Gr. {{ g.sigla_grupo }} (Cupo actual: {{ g.cupo_maximo }}, Libres: {{ g.cupos_disponibles }})
+              </option>
+            </select>
+          </div>
+          <div class="form-group">
+            <label>Cantidad de Cupos a Adicionar (*):</label>
+            <input v-model.number="formAmpliar.cupos_extra" type="number" min="1" max="50" required />
+          </div>
+          <div class="form-group">
+            <label>Motivo / Resolución de Sobrecupo (*):</label>
+            <input v-model="formAmpliar.motivo" required placeholder="Habilitación por demanda de casos especiales..." />
+          </div>
+          <div class="modal-footer">
+            <button type="button" @click="modalAmpliarCupos = false" class="btn-secondary">Cancelar</button>
+            <button type="submit" class="btn-primary" :disabled="loading">Habilitar Cupos</button>
           </div>
         </form>
       </div>
@@ -419,6 +474,7 @@ const loading = ref(false);
 const modalEstudiante = ref(false);
 const modalEvaluar = ref(false);
 const modalReserva = ref(false);
+const modalAmpliarCupos = ref(false);
 const modalOficio = ref(false);
 const solicitudActiva = ref(null);
 
@@ -439,6 +495,7 @@ const formEstudiante = ref({
 const formEval = ref({ decision: 'APROBADA', justificacion: '', motivo_rechazo: '' });
 const formEvalMaterias = ref([]);
 const formReserva = ref({ id_grupo: '', cantidad: 1, motivo: '' });
+const formAmpliar = ref({ id_grupo: '', cupos_extra: 5, motivo: '' });
 const formOficio = ref({ id_periodo: '', destinatario: 'Director CPD - UAGRM', referencia: 'Remisión de Casos Especiales Aprobados', solicitudes_ids: [] });
 
 const formatearFecha = (f) => f ? new Date(f).toLocaleString('es-BO') : 'N/A';
@@ -509,10 +566,35 @@ const abrirEvaluar = (sol) => {
     estado: sg.estado === 'RECHAZADA' ? 'RECHAZADA' : 'APROBADA',
     observacion: sg.observacion_resolucion || ''
   }));
+  verificarEstadoMaterias();
   modalEvaluar.value = true;
 };
 
+const verificarEstadoMaterias = () => {
+  if (!formEvalMaterias.value.length) return;
+  const tieneAprobadas = formEvalMaterias.value.some(m => m.estado === 'APROBADA');
+  if (!tieneAprobadas) {
+    formEval.value.decision = 'RECHAZADA';
+    if (!formEval.value.motivo_rechazo) {
+      formEval.value.motivo_rechazo = 'Todas las materias solicitadas fueron rechazadas.';
+    }
+  }
+};
+
+const cambiarDecisionGeneral = () => {
+  if (formEval.value.decision === 'APROBADA') {
+    const tieneAprobadas = formEvalMaterias.value.some(m => m.estado === 'APROBADA');
+    if (!tieneAprobadas && formEvalMaterias.value.length > 0) {
+      // Si el usuario pone APROBADA general pero todas las materias están rechazadas, forzamos al menos la primera a APROBADA
+      formEvalMaterias.value[0].estado = 'APROBADA';
+    }
+  } else if (formEval.value.decision === 'RECHAZADA') {
+    formEvalMaterias.value.forEach(m => m.estado = 'RECHAZADA');
+  }
+};
+
 const ejecutarEvaluacion = async () => {
+  verificarEstadoMaterias();
   loading.value = true;
   try {
     await api.post(`/solicitudes/${solicitudActiva.value.id}/evaluar`, {
@@ -528,6 +610,38 @@ const ejecutarEvaluacion = async () => {
     cargarDatos();
   } catch (e) {
     alert(e.response?.data?.error || 'Error al evaluar.');
+  } finally {
+    loading.value = false;
+  }
+};
+
+const abrirModalAmpliar = () => {
+  formAmpliar.value = {
+    id_grupo: grupos.value[0]?.id || '',
+    cupos_extra: 5,
+    motivo: 'Ampliación de sobrecupo para atender casos especiales'
+  };
+  modalAmpliarCupos.value = true;
+};
+
+const seleccionarGrupoParaAmpliar = (g) => {
+  formAmpliar.value = {
+    id_grupo: g.id,
+    cupos_extra: 5,
+    motivo: `Sobrecupo habilitado para grupo ${g.sigla_grupo} de ${g.materia?.sigla}`
+  };
+  modalAmpliarCupos.value = true;
+};
+
+const guardarAmpliacionCupos = async () => {
+  loading.value = true;
+  try {
+    const res = await api.post('/cupos/ampliar', formAmpliar.value);
+    modalAmpliarCupos.value = false;
+    alert(res.data.mensaje || 'Cupos adicionales habilitados exitosamente.');
+    cargarDatos();
+  } catch (e) {
+    alert(e.response?.data?.error || 'Error al ampliar cupos.');
   } finally {
     loading.value = false;
   }

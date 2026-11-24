@@ -130,7 +130,7 @@
         <form @submit.prevent="ejecutarRespuesta" class="modal-form">
           <div class="form-group">
             <label>Decisión Técnica (*):</label>
-            <select v-model="formResp.resultado" required>
+            <select v-model="formResp.resultado" @change="cambiarResultadoGeneral" required>
               <option value="HABILITADO">HABILITADO (Inscripción confirmada)</option>
               <option value="OBSERVADO">OBSERVADO</option>
               <option value="RECHAZADO">RECHAZADO</option>
@@ -153,7 +153,7 @@
                   <tr v-for="sg in formRespMaterias" :key="sg.id">
                     <td><strong>{{ sg.materia_sigla }}</strong> (Gr. {{ sg.sigla_grupo }})</td>
                     <td>
-                      <select v-model="sg.estado" class="form-control-sm">
+                      <select v-model="sg.estado" @change="verificarMateriasCpd" class="form-control-sm">
                         <option value="HABILITADA">HABILITADA (Cupo asignado)</option>
                         <option value="RECHAZADA_CPD">RECHAZADA (Sin cupo CPD)</option>
                         <option value="PENDIENTE">PENDIENTE</option>
@@ -166,7 +166,7 @@
                 </tbody>
               </table>
             </div>
-            <small class="text-muted">Nota: De las materias solicitadas, CPD puede habilitar solo las que tengan cupo técnico disponible en el sistema central.</small>
+            <small class="text-muted">Si todas las materias quedan rechazadas por falta de cupo, el trámite pasa a RECHAZADO automáticamente.</small>
           </div>
           <div class="form-group">
             <label>Código Único de Respuesta (*):</label>
@@ -265,10 +265,34 @@ const abrirRespuesta = (oficio, sol) => {
     estado: sg.estado === 'RECHAZADA' ? 'RECHAZADA_CPD' : 'HABILITADA',
     observacion: sg.observacion_resolucion || ''
   }));
+  verificarMateriasCpd();
   modalRespuesta.value = true;
 };
 
+const verificarMateriasCpd = () => {
+  if (!formRespMaterias.value.length) return;
+  const tieneHabilitadas = formRespMaterias.value.some(m => m.estado === 'HABILITADA');
+  if (!tieneHabilitadas) {
+    formResp.value.resultado = 'RECHAZADO';
+    if (!formResp.value.observaciones) {
+      formResp.value.observaciones = 'Sin cupo técnico disponible en las materias solicitadas.';
+    }
+  }
+};
+
+const cambiarResultadoGeneral = () => {
+  if (formResp.value.resultado === 'HABILITADO') {
+    const tieneHabilitadas = formRespMaterias.value.some(m => m.estado === 'HABILITADA');
+    if (!tieneHabilitadas && formRespMaterias.value.length > 0) {
+      formRespMaterias.value[0].estado = 'HABILITADA';
+    }
+  } else if (formResp.value.resultado === 'RECHAZADO') {
+    formRespMaterias.value.forEach(m => m.estado = 'RECHAZADA_CPD');
+  }
+};
+
 const ejecutarRespuesta = async () => {
+  verificarMateriasCpd();
   loading.value = true;
   try {
     await api.post('/cpd/responder', {

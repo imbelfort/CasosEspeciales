@@ -99,6 +99,51 @@ class CupoController extends Controller
     }
 
     /**
+     * Ampliación de Cupos / Sobrecupo para Casos Especiales (Dirección y CPD)
+     * Permite habilitar cupos adicionales a un grupo que tenga 0 o pocos cupos.
+     */
+    public function ampliarCupos(Request $request)
+    {
+        $user = $request->user();
+        if (!$user->tieneRol('DIRECTOR') && !$user->tieneRol('PERSONAL_ACADEMICO') && !$user->tieneRol('CPD')) {
+            return response()->json(['error' => 'Acceso no autorizado.'], 403);
+        }
+
+        $validated = $request->validate([
+            'id_grupo' => 'required|integer|exists:grupo,id',
+            'cupos_extra' => 'required|integer|min:1|max:50',
+            'motivo' => 'required|string',
+        ]);
+
+        return DB::transaction(function () use ($user, $validated) {
+            $grupo = Grupo::lockForUpdate()->findOrFail($validated['id_grupo']);
+
+            $grupo->cupo_maximo += $validated['cupos_extra'];
+            $grupo->cupos_disponibles += $validated['cupos_extra'];
+            $grupo->save();
+
+            // Registrar la acción de ampliación en auditoría/bloqueo_grupo
+            $bloqueo = BloqueoGrupo::create([
+                'id_grupo' => $grupo->id,
+                'cantidad' => $validated['cupos_extra'],
+                'motivo' => "AMPLIACIÓN DE SOBRECUPO: {$validated['motivo']}",
+                'estado' => 'LIBERADO',
+                'autorizado_por' => $user->id_usuario,
+                'fecha_bloqueo' => now(),
+                'fecha_resolucion' => now(),
+                'observacion' => "Ampliación de {$validated['cupos_extra']} cupos por " . $user->nombre
+            ]);
+
+            return response()->json([
+                'mensaje' => "Se han habilitado exitosamente {$validated['cupos_extra']} cupos adicionales para el grupo {$grupo->sigla_grupo}.",
+                'grupo' => $grupo->load('materia'),
+                'cupo_maximo_actual' => $grupo->cupo_maximo,
+                'cupos_disponibles_actual' => $grupo->cupos_disponibles
+            ]);
+        });
+    }
+
+    /**
      * Reporte o listado de cupos y bloqueos de grupos
      */
     public function listarGruposConCupos(Request $request)

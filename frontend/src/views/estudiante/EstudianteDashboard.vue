@@ -3,31 +3,33 @@
     <!-- WIDGET DE ETAPAS DINÁMICAS PRO (En Curso / Próxima / Concluida) -->
     <EtapasCronograma :periodo="periodoActivo" />
 
-    <!-- MALLA CURRICULAR DIGITAL INTERACTIVA (Sin marcar papeles) -->
-    <MallaCurricularDigital 
-      :materias="materias" 
-      :materias-solicitadas-ids="materiasSolicitadasActivas"
-      :materias-historico-map="historicoMap"
-      :materia-seleccionada="materiaSeleccionadaMalla"
-      :semestre-actual-estudiante="usuario?.estudiante?.semestre_actual || 5"
-      @select-materia="seleccionarMateriaDesdeMalla"
-    />
-
+    <!-- BARRA RESUMEN LIMPIA CON ACCIONES PRINCIPALES -->
     <div class="view-header">
-      <div>
+      <div class="header-text">
         <h2>Mis Solicitudes de Casos Especiales (CU2)</h2>
         <p class="view-desc">
-          Tu historial académico y registro están verificados automáticamente en el sistema. Puedes solicitar de 1 hasta {{ limiteMateriasCaso }} asignaturas por caso (por lo general 2). Límite institucional: 1 solicitud por temporada y máx. 5 casos en toda la carrera.
+          Plan de estudios verificado automáticamente en el sistema central. Puedes solicitar de 1 hasta {{ limiteMateriasCaso }} asignaturas por caso (habitualmente 2). Límite institucional: 1 solicitud por temporada y máx. 5 casos en toda la carrera.
         </p>
       </div>
-      <button 
-        @click="abrirModalRegistro" 
-        class="btn-primary" 
-        :disabled="tieneCasoEnTemporada || limiteCarreraAlcanzado"
-        :title="tieneCasoEnTemporada ? 'Ya tienes un caso registrado en este período. Solo se permite 1 por temporada.' : (limiteCarreraAlcanzado ? 'Has alcanzado el límite máximo de casos en tu carrera (5).' : 'Registrar nueva solicitud')"
-      >
-        <Plus :size="16" class="btn-icon" /> Registrar Solicitud de Caso Especial
-      </button>
+      <div class="header-action-buttons">
+        <!-- BOTÓN PARA ABRIR EL VISOR EN MODAL LIMPIO -->
+        <button 
+          @click="modalAvance = true" 
+          class="btn-malla"
+          title="Ver Malla Curricular interactiva e Historial Académico"
+        >
+          <GraduationCap :size="16" class="btn-icon" /> Ver Malla e Historial Académico
+        </button>
+
+        <button 
+          @click="abrirModalRegistro" 
+          class="btn-primary" 
+          :disabled="tieneCasoEnTemporada || limiteCarreraAlcanzado"
+          :title="tieneCasoEnTemporada ? 'Ya tienes un caso registrado en este período. Solo se permite 1 por temporada.' : (limiteCarreraAlcanzado ? 'Has alcanzado el límite máximo de casos en tu carrera (5).' : 'Registrar nueva solicitud')"
+        >
+          <Plus :size="16" class="btn-icon" /> Registrar Solicitud de Caso Especial
+        </button>
+      </div>
     </div>
 
     <!-- BANNER DE RESTRICCIONES INSTITUCIONALES -->
@@ -70,14 +72,9 @@
                 <Printer :size="14" class="inline-icon" /> Carta PDF
               </a>
 
-              <!-- Agregar Materia / Grupo si la solicitud está en ENVIADA -->
-              <button v-if="sol.estado === 'ENVIADA'" @click="abrirAgregarGrupo(sol)" class="btn-action btn-add">
-                <BookPlus :size="14" class="inline-icon" /> Agregar Materia
-              </button>
-
-              <!-- Adjuntar archivo de respaldo si está ENVIADA u OBSERVADA -->
-              <button v-if="sol.estado === 'ENVIADA' || sol.estado === 'OBSERVADA'" @click="abrirAdjuntarRespaldo(sol)" class="btn-action btn-file">
-                <Paperclip :size="14" class="inline-icon" /> Respaldo
+              <!-- Subsanar respaldo SOLO si la solicitud está OBSERVADA por Dirección -->
+              <button v-if="sol.estado === 'OBSERVADA'" @click="abrirAdjuntarRespaldo(sol)" class="btn-action btn-file" title="Subir nuevo respaldo solicitado en la observación">
+                <Paperclip :size="14" class="inline-icon" /> Subsanar Respaldo
               </button>
 
               <!-- Módulo de Cobros: Pagar por QR PagoFácil o Adjuntar Comprobante (CU5) -->
@@ -371,6 +368,19 @@
         </div>
       </div>
     </div>
+
+    <!-- MODAL VISOR INDEPENDIENTE DE MALLA E HISTORIAL ACADÉMICO -->
+    <ModalAvanceAcademico
+      :visible="modalAvance"
+      :materias="materias"
+      :historico-lista="historicoAcademico"
+      :historico-map="historicoMap"
+      :materias-solicitadas-ids="materiasSolicitadasActivas"
+      :materia-seleccionada="materiaSeleccionadaMalla"
+      :semestre-actual="usuario?.estudiante?.semestre_actual || 5"
+      @close="modalAvance = false"
+      @select-materia="seleccionarMateriaDesdeMalla"
+    />
   </div>
 </template>
 
@@ -394,10 +404,11 @@ import {
   Server,
   Printer,
   Trash2,
-  AlertCircle
+  AlertCircle,
+  GraduationCap
 } from '@lucide/vue';
 import PagoQrModal from '../../components/pago/PagoQrModal.vue';
-import MallaCurricularDigital from '../../components/estudiante/MallaCurricularDigital.vue';
+import ModalAvanceAcademico from '../../components/estudiante/ModalAvanceAcademico.vue';
 import EtapasCronograma from '../../components/common/EtapasCronograma.vue';
 import api from '../../services/api';
 
@@ -425,6 +436,7 @@ const getCartaPdfUrl = (sol) => {
 
 const materiaSeleccionadaMalla = ref(null);
 
+const modalAvance = ref(false);
 const modalNueva = ref(false);
 const modalGrupo = ref(false);
 const modalRespaldo = ref(false);
@@ -588,6 +600,9 @@ const seleccionarMateriaDesdeMalla = (materia) => {
     alert(`Ya tienes el caso ${casoActivoTemporada.value?.codigo} registrado en esta temporada.`);
     return;
   }
+
+  // Cerrar el modal del visor de avance si estaba abierto
+  modalAvance.value = false;
 
   abrirModalRegistro();
 
@@ -823,12 +838,44 @@ onMounted(cargarDatos);
   justify-content: space-between;
   align-items: center;
   margin-bottom: 1.5rem;
+  gap: 1.5rem;
+  flex-wrap: wrap;
+}
+.header-text {
+  flex: 1;
+  min-width: 280px;
+}
+.header-action-buttons {
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  gap: 0.75rem;
+  flex-shrink: 0;
 }
 .view-desc {
   color: #64748b;
   font-size: 0.9rem;
   max-width: 800px;
   margin: 0.3rem 0 0 0;
+}
+.btn-malla {
+  background: #f1f5f9;
+  color: #0f172a;
+  border: 1px solid #cbd5e1;
+  padding: 0.65rem 1.15rem;
+  border-radius: 6px;
+  font-weight: 600;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.45rem;
+  white-space: nowrap;
+  transition: all 0.2s ease;
+}
+.btn-malla:hover {
+  background: #e2e8f0;
+  border-color: #94a3b8;
+  color: #0064e0;
 }
 .btn-primary {
   background: #1e3a8a;
@@ -838,9 +885,10 @@ onMounted(cargarDatos);
   border-radius: 6px;
   font-weight: 600;
   cursor: pointer;
-  display: flex;
+  display: inline-flex;
   align-items: center;
-  gap: 0.4rem;
+  gap: 0.45rem;
+  white-space: nowrap;
 }
 .btn-secondary {
   background: #64748b;

@@ -248,8 +248,10 @@ class SolicitudController extends Controller
             return response()->json(['error' => 'No autorizado.'], 403);
         }
 
-        if ($solicitud->estado !== 'ENVIADA' && $solicitud->estado !== 'OBSERVADA') {
-            return response()->json(['error' => 'Solo se pueden adjuntar respaldos cuando la solicitud está ENVIADA u OBSERVADA.'], 422);
+        // Una vez enviada la solicitud, queda cerrada para evaluación de Dirección.
+        // Solo se admiten nuevos respaldos si la solicitud fue explícitamente OBSERVADA.
+        if ($solicitud->estado !== 'OBSERVADA') {
+            return response()->json(['error' => 'La solicitud ya fue enviada y se encuentra en revisión. Solo se pueden adjuntar nuevos respaldos si la solicitud está OBSERVADA.'], 422);
         }
 
         $file = $request->file('archivo');

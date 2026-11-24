@@ -50,6 +50,7 @@ Route::middleware('auth:sanctum')->group(function () {
 
     // CU4: Bloqueo y Control de Cupos
     Route::post('/cupos/reservar', [CupoController::class, 'reservar']);
+    Route::post('/cupos/ampliar', [CupoController::class, 'ampliarCupos']);
     Route::post('/cupos/bloqueos/{id}/liberar', [CupoController::class, 'liberar']);
     Route::get('/cupos/grupos', [CupoController::class, 'listarGruposConCupos']);
 

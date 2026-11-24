@@ -66,37 +66,30 @@ class CpdController extends Controller
                 ], 422);
             }
 
-            $nuevoEstado = match ($validated['resultado']) {
-                'HABILITADO' => 'HABILITADA',
-                'OBSERVADO' => 'OBSERVADA_CPD',
-                'RECHAZADO' => 'RECHAZADA_CPD',
-            };
-
-            $fechaHabilitacion = $validated['resultado'] === 'HABILITADO' ? now() : null;
-
-            // Registrar en oficio_respuesta_cpd
-            $respuesta = OficioRespuestaCpd::create([
-                'id_oficio' => $validated['id_oficio'],
-                'id_solicitud' => $solicitud->id,
-                'codigo_respuesta' => $validated['codigo_respuesta'],
-                'resultado' => $validated['resultado'],
-                'observaciones' => $validated['observaciones'] ?? null,
-                'referencia_respaldo' => $validated['referencia_respaldo'] ?? null,
-                'fecha_respuesta' => now(),
-                'fecha_habilitacion_efectiva' => $fechaHabilitacion,
-                'id_responsable_cpd' => $user->id_usuario,
-                'estado' => 'REGISTRADO'
-            ]);
+            $resultadoFinal = $validated['resultado'];
+            $observacionesFinal = $validated['observaciones'] ?? null;
 
             // Actualización granular de habilitación en CPD por cada materia/grupo
             if (!empty($validated['materias_habilitadas'])) {
+                $habilitadasCount = 0;
                 foreach ($validated['materias_habilitadas'] as $mh) {
+                    if ($mh['estado'] === 'HABILITADA') {
+                        $habilitadasCount++;
+                    }
                     \App\Models\SolicitudGrupo::where('id', $mh['id'])
                         ->where('id_solicitud', $solicitud->id)
                         ->update([
                             'estado' => $mh['estado'],
                             'observacion_resolucion' => $mh['observacion'] ?? null
                         ]);
+                }
+
+                // Si CPD rechaza todas las materias, el caso debe pasar a RECHAZADA_CPD
+                if ($habilitadasCount === 0 && $resultadoFinal === 'HABILITADO') {
+                    $resultadoFinal = 'RECHAZADO';
+                    if (empty($observacionesFinal)) {
+                        $observacionesFinal = 'Todas las materias solicitadas fueron rechazadas por CPD por falta de cupo técnico o incompatibilidad.';
+                    }
                 }
             } else {
                 if ($validated['resultado'] === 'HABILITADO') {
@@ -106,12 +99,34 @@ class CpdController extends Controller
                 }
             }
 
+            $nuevoEstado = match ($resultadoFinal) {
+                'HABILITADO' => 'HABILITADA',
+                'OBSERVADO' => 'OBSERVADA_CPD',
+                'RECHAZADO' => 'RECHAZADA_CPD',
+            };
+
+            $fechaHabilitacion = $resultadoFinal === 'HABILITADO' ? now() : null;
+
+            // Registrar en oficio_respuesta_cpd
+            $respuesta = OficioRespuestaCpd::create([
+                'id_oficio' => $validated['id_oficio'],
+                'id_solicitud' => $solicitud->id,
+                'codigo_respuesta' => $validated['codigo_respuesta'],
+                'resultado' => $resultadoFinal,
+                'observaciones' => $observacionesFinal,
+                'referencia_respaldo' => $validated['referencia_respaldo'] ?? null,
+                'fecha_respuesta' => now(),
+                'fecha_habilitacion_efectiva' => $fechaHabilitacion,
+                'id_responsable_cpd' => $user->id_usuario,
+                'estado' => 'REGISTRADO'
+            ]);
+
             // Auditoría y Notificaciones al estudiante y dirección
-            $asunto = "Resultado de Procesamiento CPD: {$validated['resultado']} - {$solicitud->codigo}";
-            $mensaje = match ($validated['resultado']) {
+            $asunto = "Resultado de Procesamiento CPD: {$resultadoFinal} - {$solicitud->codigo}";
+            $mensaje = match ($resultadoFinal) {
                 'HABILITADO' => "Felicidades. El Centro de Procesamiento de Datos (CPD) ha HABILITADO su inscripción para el caso especial {$solicitud->codigo}.",
-                'OBSERVADO' => "El CPD ha emitido observaciones a su caso: " . ($validated['observaciones'] ?? 'Sin detalle adicional.'),
-                'RECHAZADO' => "El CPD ha RECHAZADO la habilitación técnica: " . ($validated['observaciones'] ?? 'Sin motivo especificado.'),
+                'OBSERVADO' => "El CPD ha emitido observaciones a su caso: " . ($observacionesFinal ?? 'Sin detalle adicional.'),
+                'RECHAZADO' => "El CPD ha RECHAZADO la habilitación técnica: " . ($observacionesFinal ?? 'Sin motivo especificado.'),
             };
 
             AuditoriaNotificacionService::registrarTransicion(
@@ -119,7 +134,7 @@ class CpdController extends Controller
                 $nuevoEstado,
                 'RESPUESTA_CPD',
                 $user->id_usuario,
-                "Respuesta registrada por CPD: {$validated['resultado']} con código {$validated['codigo_respuesta']}",
+                "Respuesta registrada por CPD: {$resultadoFinal} con código {$validated['codigo_respuesta']}",
                 $asunto,
                 $mensaje
             );
