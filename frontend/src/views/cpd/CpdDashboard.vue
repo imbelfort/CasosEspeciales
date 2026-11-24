@@ -1,11 +1,11 @@
 <template>
   <div class="role-view">
     <div class="view-header">
-      <div>
+      <div class="header-text">
         <h2>Centro de Procesamiento de Datos (CU6 - CPD)</h2>
         <p class="view-desc">Procesamiento técnico final de casos especiales remitidos por Dirección y gestión del cronograma.</p>
       </div>
-      <div class="header-btns">
+      <div class="header-action-buttons">
         <button @click="modalConfigPeriodo = true" class="btn-primary">
           <Calendar :size="15" class="inline-icon" /> Parámetros y Arancel
         </button>
@@ -63,60 +63,66 @@
     <div v-if="modalConfigPeriodo" class="modal-backdrop">
       <div class="modal-box modal-lg">
         <div class="modal-header">
-          <h3>Parámetros de Casos Especiales (Gestión {{ periodoActivo?.gestion || '1-2026' }})</h3>
+          <div>
+            <h3>Parámetros de Casos Especiales</h3>
+            <p class="modal-subtitle">Gestión Semestral {{ periodoActivo?.gestion || '1-2026' }} &bull; Parámetros oficiales UAGRM</p>
+          </div>
           <button @click="modalConfigPeriodo = false" class="btn-close">
             <X :size="18" />
           </button>
         </div>
-        <form @submit.prevent="guardarConfigPeriodo" class="modal-form">
-          <div class="alert-box-info mb-3">
-            Configura el rango oficial de fechas en el que los estudiantes pueden registrar solicitudes de casos especiales y el monto del arancel (UAGRM).
-          </div>
-          
-          <div class="row">
-            <div class="form-group col">
-              <label>Costo Arancel por Caso Especial (Bs.):</label>
-              <input v-model.number="formConfig.costo_arancel_caso" type="number" step="0.5" required />
+        
+        <div class="modal-body-scroll">
+          <form @submit.prevent="guardarConfigPeriodo" class="modal-form">
+            <div class="alert-box-info mb-3">
+              Configura el rango oficial de fechas en el que los estudiantes pueden registrar solicitudes de casos especiales y el monto del arancel (UAGRM).
             </div>
-            <div class="form-group col">
-              <label>Estado del Período:</label>
-              <input :value="periodoActivo?.estado || 'ACTIVO'" disabled />
+            
+            <div class="row">
+              <div class="form-group col">
+                <label>Costo Arancel por Caso Especial (Bs.):</label>
+                <input v-model.number="formConfig.costo_arancel_caso" type="number" step="0.5" required />
+              </div>
+              <div class="form-group col">
+                <label>Estado del Período:</label>
+                <input :value="periodoActivo?.estado || 'ACTIVO'" disabled />
+              </div>
             </div>
-          </div>
 
-          <h4 class="mt-3">Límites y Reglas Institucionales (CPD / UAGRM)</h4>
-          <div class="row">
-            <div class="form-group col">
-              <label>Máx. Materias por Solicitud:</label>
-              <input v-model.number="formConfig.max_materias_por_caso" type="number" min="1" max="10" required />
-              <small class="text-muted">Habitual: 2 a 5 materias (CPD define cuántas habilita).</small>
+            <h4 class="section-title">Límites y Reglas Institucionales (CPD / UAGRM)</h4>
+            <div class="row">
+              <div class="form-group col">
+                <label>Máx. Materias por Solicitud:</label>
+                <input v-model.number="formConfig.max_materias_por_caso" type="number" min="1" max="10" required />
+                <small class="text-muted">Habitual: 2 a 5 materias (CPD define cuántas habilita).</small>
+              </div>
+              <div class="form-group col">
+                <label>Límite Histórico Carrera por Alumno:</label>
+                <input v-model.number="formConfig.max_casos_carrera" type="number" min="1" max="10" required />
+                <small class="text-muted">Norma: máximo 5 casos en toda la carrera.</small>
+              </div>
             </div>
-            <div class="form-group col">
-              <label>Límite Histórico Carrera por Alumno:</label>
-              <input v-model.number="formConfig.max_casos_carrera" type="number" min="1" max="10" required />
-              <small class="text-muted">Norma: máximo 5 casos en toda la carrera.</small>
-            </div>
-          </div>
 
-          <h4 class="mt-3">Período Oficial de Recepción de Solicitudes</h4>
-          <div class="row">
-            <div class="form-group col">
-              <label>Fecha Inicio de Recepción:</label>
-              <input v-model="formConfig.fecha_inicio_solicitud" type="date" required />
+            <h4 class="section-title">Período Oficial de Recepción de Solicitudes</h4>
+            <div class="row">
+              <div class="form-group col">
+                <label>Fecha Inicio de Recepción:</label>
+                <input v-model="formConfig.fecha_inicio_solicitud" type="date" required />
+              </div>
+              <div class="form-group col">
+                <label>Fecha Límite de Recepción:</label>
+                <input v-model="formConfig.fecha_fin_solicitud" type="date" required />
+              </div>
             </div>
-            <div class="form-group col">
-              <label>Fecha Límite de Recepción:</label>
-              <input v-model="formConfig.fecha_fin_solicitud" type="date" required />
-            </div>
-          </div>
 
-          <div class="modal-footer">
-            <button type="button" @click="modalConfigPeriodo = false" class="btn-secondary">Cancelar</button>
-            <button type="submit" class="btn-primary" :disabled="guardandoConfig">
-              {{ guardandoConfig ? 'Guardando...' : 'Guardar Parámetros' }}
-            </button>
-          </div>
-        </form>
+            <div class="modal-footer">
+              <button type="button" @click="modalConfigPeriodo = false" class="btn-secondary">Cancelar</button>
+              <button type="submit" class="btn-primary" :disabled="guardandoConfig">
+                {{ guardandoConfig ? 'Guardando...' : 'Guardar Parámetros' }}
+              </button>
+            </div>
+          </form>
+        </div>
       </div>
     </div>
 
@@ -332,20 +338,58 @@ onMounted(cargarPendientes);
   justify-content: space-between;
   align-items: center;
   margin-bottom: 1.5rem;
+  gap: 1.5rem;
+  flex-wrap: wrap;
+}
+.header-text {
+  flex: 1;
+  min-width: 280px;
+}
+.header-text h2 {
+  margin: 0;
+  color: #1e293b;
+}
+.view-desc {
+  color: #64748b;
+  font-size: 0.9rem;
+  margin: 0.3rem 0 0 0;
+}
+.header-action-buttons {
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  gap: 0.75rem;
+  flex-shrink: 0;
+}
+.btn-primary {
+  background: #1e3a8a;
+  color: white;
+  border: none;
+  padding: 0.65rem 1.25rem;
+  border-radius: 6px;
+  font-weight: 600;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.45rem;
+  white-space: nowrap;
 }
 .btn-secondary {
   background: #64748b;
   color: white;
   border: none;
-  padding: 0.6rem 1.2rem;
+  padding: 0.65rem 1.25rem;
   border-radius: 6px;
+  font-weight: 600;
   cursor: pointer;
-  display: flex;
+  display: inline-flex;
   align-items: center;
-  gap: 0.3rem;
+  gap: 0.45rem;
+  white-space: nowrap;
 }
 .inline-icon {
   vertical-align: middle;
+  flex-shrink: 0;
 }
 .oficio-card {
   border: 1px solid #e2e8f0;
@@ -408,33 +452,115 @@ onMounted(cargarPendientes);
   align-items: center;
   justify-content: center;
   z-index: 100;
+  padding: 1rem;
 }
 .modal-box {
   background: white;
   border-radius: 12px;
   width: 100%;
-  max-width: 520px;
+  max-width: 540px;
   padding: 1.5rem;
+  box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.2), 0 10px 10px -5px rgba(0, 0, 0, 0.1);
+  display: flex;
+  flex-direction: column;
+  max-height: 90vh;
+}
+.modal-box.modal-lg {
+  max-width: 680px;
 }
 .modal-header {
   display: flex;
   justify-content: space-between;
-  align-items: center;
+  align-items: flex-start;
   border-bottom: 1px solid #e2e8f0;
   padding-bottom: 0.8rem;
+  margin-bottom: 1rem;
+}
+.modal-header h3 {
+  margin: 0;
+  font-size: 1.25rem;
+  color: #1e293b;
+}
+.modal-subtitle {
+  margin: 0.2rem 0 0 0;
+  font-size: 0.85rem;
+  color: #64748b;
+}
+.btn-close {
+  background: transparent;
+  border: none;
+  cursor: pointer;
+  color: #64748b;
+  padding: 0.3rem;
+  border-radius: 6px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+.btn-close:hover {
+  background: #f1f5f9;
+  color: #0f172a;
+}
+.modal-body-scroll {
+  overflow-y: auto;
+  max-height: calc(90vh - 120px);
+  padding-right: 0.5rem;
 }
 .modal-footer {
   display: flex;
   justify-content: flex-end;
   gap: 0.8rem;
   margin-top: 1.5rem;
+  border-top: 1px solid #e2e8f0;
+  padding-top: 1rem;
+}
+.section-title {
+  font-size: 0.98rem;
+  font-weight: 700;
+  color: #1e293b;
+  margin: 1.2rem 0 0.6rem 0;
+  padding-bottom: 0.3rem;
+  border-bottom: 1px solid #f1f5f9;
+}
+.alert-box-info {
+  background: #eff6ff;
+  border: 1px solid #bfdbfe;
+  color: #1e40af;
+  padding: 0.75rem 1rem;
+  border-radius: 6px;
+  font-size: 0.85rem;
+}
+.row {
+  display: flex;
+  gap: 1rem;
+  margin-bottom: 0.5rem;
+}
+.col {
+  flex: 1;
 }
 .form-group { margin-bottom: 1rem; }
-.form-group label { display: block; font-size: 0.85rem; font-weight: 600; margin-bottom: 0.3rem; }
+.form-group label { display: block; font-size: 0.85rem; font-weight: 600; margin-bottom: 0.3rem; color: #334155; }
 .form-group select, .form-group input, .form-group textarea {
   width: 100%;
   padding: 0.65rem 0.8rem;
   border: 1px solid #cbd5e1;
   border-radius: 6px;
+  box-sizing: border-box;
+  font-size: 0.9rem;
+}
+.form-group select:focus, .form-group input:focus, .form-group textarea:focus {
+  outline: none;
+  border-color: #0064e0;
+  box-shadow: 0 0 0 2px rgba(0, 100, 224, 0.15);
+}
+.form-control-sm {
+  padding: 0.35rem 0.5rem !important;
+  font-size: 0.85rem !important;
+}
+.text-muted {
+  color: #64748b;
+  font-size: 0.8rem;
+  display: block;
+  margin-top: 0.2rem;
 }
 </style>

@@ -203,144 +203,153 @@
     <div v-if="modalEstudiante" class="modal-backdrop">
       <div class="modal-box modal-lg">
         <div class="modal-header">
-          <h3>CU1: Matricular Nuevo Alumno</h3>
+          <div>
+            <h3>CU1: Matricular Nuevo Alumno</h3>
+            <p class="modal-subtitle">Registro administrativo de estudiantes con validación de 11 campos oficiales</p>
+          </div>
           <button @click="modalEstudiante = false" class="btn-close"><X :size="18" /></button>
         </div>
-        <form @submit.prevent="guardarEstudiante" class="modal-form">
-          <p class="auth-desc">Registro administrativo con validación estricta de los 11 campos institucionales.</p>
-          
-          <div class="row">
-            <div class="form-group col">
-              <label>Nombres (*):</label>
-              <input v-model="formEstudiante.nombre" required placeholder="Carlos Eduardo" />
+        <div class="modal-body-scroll">
+          <form @submit.prevent="guardarEstudiante" class="modal-form">
+            <div class="row">
+              <div class="form-group col">
+                <label>Nombres (*):</label>
+                <input v-model="formEstudiante.nombre" required placeholder="Carlos Eduardo" />
+              </div>
+              <div class="form-group col">
+                <label>Apellidos (*):</label>
+                <input v-model="formEstudiante.apellidos" required placeholder="Méndez Vargas" />
+              </div>
             </div>
-            <div class="form-group col">
-              <label>Apellidos (*):</label>
-              <input v-model="formEstudiante.apellidos" required placeholder="Méndez Vargas" />
-            </div>
-          </div>
 
-          <div class="row">
-            <div class="form-group col">
-              <label>Cédula de Identidad (CI) (*):</label>
-              <input v-model="formEstudiante.ci" required placeholder="7890123" />
+            <div class="row">
+              <div class="form-group col">
+                <label>Cédula de Identidad (CI) (*):</label>
+                <input v-model="formEstudiante.ci" required placeholder="7890123" />
+              </div>
+              <div class="form-group col">
+                <label>Registro Universitario (RU) (*):</label>
+                <input v-model="formEstudiante.registro_universitario" required placeholder="221098451" />
+              </div>
             </div>
-            <div class="form-group col">
-              <label>Registro Universitario (RU) (*):</label>
-              <input v-model="formEstudiante.registro_universitario" required placeholder="221098451" />
-            </div>
-          </div>
 
-          <div class="row">
-            <div class="form-group col">
-              <label>Correo Electrónico (*):</label>
-              <input v-model="formEstudiante.email" type="email" required placeholder="carlos.mendez@ficct.uagrm.edu.bo" />
+            <div class="row">
+              <div class="form-group col">
+                <label>Correo Electrónico (*):</label>
+                <input v-model="formEstudiante.email" type="email" required placeholder="carlos.mendez@ficct.uagrm.edu.bo" />
+              </div>
+              <div class="form-group col">
+                <label>Teléfono (*):</label>
+                <input v-model="formEstudiante.telefono" required placeholder="78945612" />
+              </div>
             </div>
-            <div class="form-group col">
-              <label>Teléfono (*):</label>
-              <input v-model="formEstudiante.telefono" required placeholder="78945612" />
-            </div>
-          </div>
 
-          <div class="form-group">
-            <label>Dirección de Residencia (*):</label>
-            <input v-model="formEstudiante.direccion" required placeholder="Barrio Las Palmas Calle 3 #45" />
-          </div>
-
-          <div class="row">
-            <div class="form-group col">
-              <label>Fecha de Nacimiento (*):</label>
-              <input v-model="formEstudiante.fecha_nacimiento" type="date" required />
+            <div class="form-group">
+              <label>Dirección de Residencia (*):</label>
+              <input v-model="formEstudiante.direccion" required placeholder="Barrio Las Palmas Calle 3 #45" />
             </div>
-            <div class="form-group col">
-              <label>Carrera Asignada (*):</label>
-              <select v-model="formEstudiante.id_carrera" required>
-                <option value="" disabled>Seleccione Carrera...</option>
-                <option v-for="c in carreras" :key="c.id" :value="c.id">{{ c.nombre }} ({{ c.codigo }})</option>
-              </select>
-            </div>
-            <div class="form-group col">
-              <label>Semestre (1-12) (*):</label>
-              <input v-model.number="formEstudiante.semestre" type="number" min="1" max="12" required />
-            </div>
-          </div>
 
-          <div class="form-group">
-            <label>Contraseña Inicial (*):</label>
-            <input v-model="formEstudiante.password" type="password" required minlength="6" placeholder="Mínimo 6 caracteres" />
-          </div>
+            <div class="row">
+              <div class="form-group col">
+                <label>Fecha de Nacimiento (*):</label>
+                <input v-model="formEstudiante.fecha_nacimiento" type="date" required />
+              </div>
+              <div class="form-group col">
+                <label>Carrera Asignada (*):</label>
+                <select v-model="formEstudiante.id_carrera" required>
+                  <option value="" disabled>Seleccione Carrera...</option>
+                  <option v-for="c in carreras" :key="c.id" :value="c.id">{{ c.nombre }} ({{ c.codigo }})</option>
+                </select>
+              </div>
+              <div class="form-group col">
+                <label>Semestre (1-12) (*):</label>
+                <input v-model.number="formEstudiante.semestre" type="number" min="1" max="12" required />
+              </div>
+            </div>
 
-          <div class="modal-footer">
-            <button type="button" @click="modalEstudiante = false" class="btn-secondary">Cancelar</button>
-            <button type="submit" class="btn-primary" :disabled="loading">
-              <UserPlus :size="15" class="inline-icon" /> Registrar y Matricular Alumno
-            </button>
-          </div>
-        </form>
+            <div class="form-group">
+              <label>Contraseña Inicial (*):</label>
+              <input v-model="formEstudiante.password" type="password" required minlength="6" placeholder="Mínimo 6 caracteres" />
+            </div>
+
+            <div class="modal-footer">
+              <button type="button" @click="modalEstudiante = false" class="btn-secondary">Cancelar</button>
+              <button type="submit" class="btn-primary" :disabled="loading">
+                <UserPlus :size="15" class="inline-icon" /> Registrar y Matricular Alumno
+              </button>
+            </div>
+          </form>
+        </div>
       </div>
     </div>
 
     <!-- MODAL EVALUAR (CU3) -->
     <div v-if="modalEvaluar && solicitudActiva" class="modal-backdrop">
-      <div class="modal-box">
+      <div class="modal-box modal-lg">
         <div class="modal-header">
-          <h3>CU3: Evaluar {{ solicitudActiva.codigo }}</h3>
+          <div>
+            <h3>CU3: Evaluar Solicitud {{ solicitudActiva.codigo }}</h3>
+            <p class="modal-subtitle">Dictamen formal por materia y resolución de Dirección de Carrera</p>
+          </div>
           <button @click="modalEvaluar = false" class="btn-close"><X :size="18" /></button>
         </div>
-        <form @submit.prevent="ejecutarEvaluacion" class="modal-form">
-          <div class="form-group">
-            <label>Decisión Formal (*):</label>
-            <select v-model="formEval.decision" @change="cambiarDecisionGeneral" required>
-              <option value="APROBADA">APROBADA (Habilita pago de arancel)</option>
-              <option value="RECHAZADA">RECHAZADA</option>
-              <option value="OBSERVADA">OBSERVADA</option>
-            </select>
-          </div>
-
-          <!-- Evaluación individual por materia solicitada -->
-          <div v-if="solicitudActiva.grupos && solicitudActiva.grupos.length > 0" class="form-group">
-            <label>Dictamen por Asignatura Solicitada:</label>
-            <div class="table-responsive">
-              <table class="data-table">
-                <thead>
-                  <tr>
-                    <th>Materia / Grupo</th>
-                    <th>Resolución</th>
-                    <th>Observación</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  <tr v-for="sg in formEvalMaterias" :key="sg.id">
-                    <td><strong>{{ sg.materia_sigla }}</strong> (Gr. {{ sg.sigla_grupo }})</td>
-                    <td>
-                      <select v-model="sg.estado" @change="verificarEstadoMaterias" class="form-control-sm">
-                        <option value="APROBADA">APROBADA</option>
-                        <option value="RECHAZADA">RECHAZADA</option>
-                        <option value="PENDIENTE">PENDIENTE</option>
-                      </select>
-                    </td>
-                    <td>
-                      <input v-model="sg.observacion" placeholder="Motivo o condición..." class="form-control-sm" />
-                    </td>
-                  </tr>
-                </tbody>
-              </table>
+        <div class="modal-body-scroll">
+          <form @submit.prevent="ejecutarEvaluacion" class="modal-form">
+            <div class="form-group">
+              <label>Decisión Formal (*):</label>
+              <select v-model="formEval.decision" @change="cambiarDecisionGeneral" required>
+                <option value="APROBADA">APROBADA (Habilita pago de arancel)</option>
+                <option value="RECHAZADA">RECHAZADA</option>
+                <option value="OBSERVADA">OBSERVADA (Exigir subsanación de requisitos)</option>
+              </select>
             </div>
-            <small class="text-muted">Si todas las materias quedan rechazadas, el caso especial pasa automáticamente a RECHAZADO.</small>
-          </div>
-          <div v-if="formEval.decision === 'RECHAZADA'" class="form-group">
-            <label>Motivo de Rechazo (*):</label>
-            <textarea v-model="formEval.motivo_rechazo" rows="3" required></textarea>
-          </div>
-          <div class="form-group">
-            <label>Justificación / Observaciones:</label>
-            <textarea v-model="formEval.justificacion" rows="3"></textarea>
-          </div>
-          <div class="modal-footer">
-            <button type="button" @click="modalEvaluar = false" class="btn-secondary">Cancelar</button>
-            <button type="submit" class="btn-primary" :disabled="loading">Guardar Resolución</button>
-          </div>
-        </form>
+
+            <!-- Evaluación individual por materia solicitada -->
+            <div v-if="solicitudActiva.grupos && solicitudActiva.grupos.length > 0" class="form-group">
+              <label>Dictamen por Asignatura Solicitada:</label>
+              <div class="table-responsive">
+                <table class="data-table">
+                  <thead>
+                    <tr>
+                      <th>Materia / Grupo</th>
+                      <th>Resolución</th>
+                      <th>Observación</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    <tr v-for="sg in formEvalMaterias" :key="sg.id">
+                      <td><strong>{{ sg.materia_sigla }}</strong> (Gr. {{ sg.sigla_grupo }})</td>
+                      <td>
+                        <select v-model="sg.estado" @change="verificarEstadoMaterias" class="form-control-sm">
+                          <option value="APROBADA">APROBADA</option>
+                          <option value="RECHAZADA">RECHAZADA</option>
+                          <option value="PENDIENTE">PENDIENTE</option>
+                        </select>
+                      </td>
+                      <td>
+                        <input v-model="sg.observacion" placeholder="Motivo o condición..." class="form-control-sm" />
+                      </td>
+                    </tr>
+                  </tbody>
+                </table>
+              </div>
+              <small class="text-muted">Si todas las materias quedan rechazadas, el caso especial pasa automáticamente a RECHAZADO.</small>
+            </div>
+            
+            <div v-if="formEval.decision === 'RECHAZADA'" class="form-group">
+              <label>Motivo de Rechazo (*):</label>
+              <textarea v-model="formEval.motivo_rechazo" rows="3" required placeholder="Detalla el motivo del rechazo para notificar al estudiante..."></textarea>
+            </div>
+            <div class="form-group">
+              <label>Justificación / Observaciones:</label>
+              <textarea v-model="formEval.justificacion" rows="3" placeholder="Observaciones institucionales o indicaciones para el alumno..."></textarea>
+            </div>
+            <div class="modal-footer">
+              <button type="button" @click="modalEvaluar = false" class="btn-secondary">Cancelar</button>
+              <button type="submit" class="btn-primary" :disabled="loading">Guardar Resolución</button>
+            </div>
+          </form>
+        </div>
       </div>
     </div>
 
@@ -348,32 +357,37 @@
     <div v-if="modalReserva" class="modal-backdrop">
       <div class="modal-box">
         <div class="modal-header">
-          <h3>CU4: Reservar Cupo Transaccional</h3>
+          <div>
+            <h3>CU4: Reservar Cupo Transaccional</h3>
+            <p class="modal-subtitle">Bloqueo de cupos existentes con SELECT FOR UPDATE</p>
+          </div>
           <button @click="modalReserva = false" class="btn-close"><X :size="18" /></button>
         </div>
-        <form @submit.prevent="guardarReserva" class="modal-form">
-          <div class="form-group">
-            <label>Grupo a Bloquear (*):</label>
-            <select v-model="formReserva.id_grupo" required>
-              <option value="" disabled>Seleccione grupo...</option>
-              <option v-for="g in grupos" :key="g.id" :value="g.id">
-                {{ g.materia?.sigla }} - Gr. {{ g.sigla_grupo }} (Disponibles: {{ g.cupos_disponibles }})
-              </option>
-            </select>
-          </div>
-          <div class="form-group">
-            <label>Cantidad de cupos a bloquear (*):</label>
-            <input v-model.number="formReserva.cantidad" type="number" min="1" required />
-          </div>
-          <div class="form-group">
-            <label>Motivo de reserva (*):</label>
-            <input v-model="formReserva.motivo" required placeholder="Reserva para caso especial..." />
-          </div>
-          <div class="modal-footer">
-            <button type="button" @click="modalReserva = false" class="btn-secondary">Cancelar</button>
-            <button type="submit" class="btn-primary" :disabled="loading">Ejecutar Reserva</button>
-          </div>
-        </form>
+        <div class="modal-body-scroll">
+          <form @submit.prevent="guardarReserva" class="modal-form">
+            <div class="form-group">
+              <label>Grupo a Bloquear (*):</label>
+              <select v-model="formReserva.id_grupo" required>
+                <option value="" disabled>Seleccione grupo...</option>
+                <option v-for="g in grupos" :key="g.id" :value="g.id">
+                  {{ g.materia?.sigla }} - Gr. {{ g.sigla_grupo }} (Disponibles: {{ g.cupos_disponibles }})
+                </option>
+              </select>
+            </div>
+            <div class="form-group">
+              <label>Cantidad de cupos a bloquear (*):</label>
+              <input v-model.number="formReserva.cantidad" type="number" min="1" required />
+            </div>
+            <div class="form-group">
+              <label>Motivo de reserva (*):</label>
+              <input v-model="formReserva.motivo" required placeholder="Reserva para caso especial..." />
+            </div>
+            <div class="modal-footer">
+              <button type="button" @click="modalReserva = false" class="btn-secondary">Cancelar</button>
+              <button type="submit" class="btn-primary" :disabled="loading">Ejecutar Reserva</button>
+            </div>
+          </form>
+        </div>
       </div>
     </div>
 
@@ -381,35 +395,40 @@
     <div v-if="modalAmpliarCupos" class="modal-backdrop">
       <div class="modal-box">
         <div class="modal-header">
-          <h3>Habilitar Cupos Extra / Sobrecupo</h3>
+          <div>
+            <h3>Habilitar Cupos Extra / Sobrecupo</h3>
+            <p class="modal-subtitle">Aumento de cupos para grupos con demanda de casos especiales</p>
+          </div>
           <button @click="modalAmpliarCupos = false" class="btn-close"><X :size="18" /></button>
         </div>
-        <form @submit.prevent="guardarAmpliacionCupos" class="modal-form">
-          <p class="text-muted" style="margin-bottom: 1rem;">
-            Aumenta el cupo máximo y disponible para materias solicitadas por casos especiales (ej: añadir 5 o 10 cupos más).
-          </p>
-          <div class="form-group">
-            <label>Grupo a Ampliar (*):</label>
-            <select v-model="formAmpliar.id_grupo" required>
-              <option value="" disabled>Seleccione grupo...</option>
-              <option v-for="g in grupos" :key="g.id" :value="g.id">
-                {{ g.materia?.sigla }} - Gr. {{ g.sigla_grupo }} (Cupo actual: {{ g.cupo_maximo }}, Libres: {{ g.cupos_disponibles }})
-              </option>
-            </select>
-          </div>
-          <div class="form-group">
-            <label>Cantidad de Cupos a Adicionar (*):</label>
-            <input v-model.number="formAmpliar.cupos_extra" type="number" min="1" max="50" required />
-          </div>
-          <div class="form-group">
-            <label>Motivo / Resolución de Sobrecupo (*):</label>
-            <input v-model="formAmpliar.motivo" required placeholder="Habilitación por demanda de casos especiales..." />
-          </div>
-          <div class="modal-footer">
-            <button type="button" @click="modalAmpliarCupos = false" class="btn-secondary">Cancelar</button>
-            <button type="submit" class="btn-primary" :disabled="loading">Habilitar Cupos</button>
-          </div>
-        </form>
+        <div class="modal-body-scroll">
+          <form @submit.prevent="guardarAmpliacionCupos" class="modal-form">
+            <div class="alert-box-info mb-3">
+              Aumenta el cupo máximo y disponible para materias solicitadas por casos especiales (ej: añadir 5 o 10 cupos más).
+            </div>
+            <div class="form-group">
+              <label>Grupo a Ampliar (*):</label>
+              <select v-model="formAmpliar.id_grupo" required>
+                <option value="" disabled>Seleccione grupo...</option>
+                <option v-for="g in grupos" :key="g.id" :value="g.id">
+                  {{ g.materia?.sigla }} - Gr. {{ g.sigla_grupo }} (Cupo actual: {{ g.cupo_maximo }}, Libres: {{ g.cupos_disponibles }})
+                </option>
+              </select>
+            </div>
+            <div class="form-group">
+              <label>Cantidad de Cupos a Adicionar (*):</label>
+              <input v-model.number="formAmpliar.cupos_extra" type="number" min="1" max="50" required />
+            </div>
+            <div class="form-group">
+              <label>Motivo / Resolución de Sobrecupo (*):</label>
+              <input v-model="formAmpliar.motivo" required placeholder="Habilitación por demanda de casos especiales..." />
+            </div>
+            <div class="modal-footer">
+              <button type="button" @click="modalAmpliarCupos = false" class="btn-secondary">Cancelar</button>
+              <button type="submit" class="btn-primary" :disabled="loading">Habilitar Cupos</button>
+            </div>
+          </form>
+        </div>
       </div>
     </div>
 
@@ -417,39 +436,44 @@
     <div v-if="modalOficio" class="modal-backdrop">
       <div class="modal-box modal-lg">
         <div class="modal-header">
-          <h3>CU5: Emisión de Oficio Consolidado a CPD</h3>
+          <div>
+            <h3>CU5: Emisión de Oficio Consolidado a CPD</h3>
+            <p class="modal-subtitle">Genera el archivo CSV oficial y remite el lote de casos aprobados</p>
+          </div>
           <button @click="modalOficio = false" class="btn-close"><X :size="18" /></button>
         </div>
-        <form @submit.prevent="emitirOficio" class="modal-form">
-          <div class="row">
-            <div class="form-group col">
-              <label>Destinatario (*):</label>
-              <input v-model="formOficio.destinatario" required placeholder="Lic. Director de CPD - UAGRM" />
+        <div class="modal-body-scroll">
+          <form @submit.prevent="emitirOficio" class="modal-form">
+            <div class="row">
+              <div class="form-group col">
+                <label>Destinatario (*):</label>
+                <input v-model="formOficio.destinatario" required placeholder="Lic. Director de CPD - UAGRM" />
+              </div>
+              <div class="form-group col">
+                <label>Referencia (*):</label>
+                <input v-model="formOficio.referencia" required placeholder="Remisión de casos especiales aprobados con pago" />
+              </div>
             </div>
-            <div class="form-group col">
-              <label>Referencia (*):</label>
-              <input v-model="formOficio.referencia" required placeholder="Remisión de casos especiales aprobados con pago" />
+            <h4 class="section-title">Seleccione los casos APROBADOS a consolidar en este lote:</h4>
+            <div class="sol-check-list">
+              <div v-for="sol in solicitudesAprobadas" :key="sol.id" class="sol-check-item">
+                <label style="display: flex; align-items: center; gap: 0.5rem; cursor: pointer;">
+                  <input type="checkbox" :value="sol.id" v-model="formOficio.solicitudes_ids" />
+                  <span><strong>{{ sol.codigo }}</strong> - {{ sol.estudiante?.usuario?.nombre }} {{ sol.estudiante?.usuario?.apellidos }} ({{ sol.tipo_caso }})</span>
+                </label>
+              </div>
+              <div v-if="solicitudesAprobadas.length === 0" class="no-records">
+                No hay casos con pago en estado APROBADA listos para remitir.
+              </div>
             </div>
-          </div>
-          <h4>Seleccione los casos APROBADOS a consolidar en este lote:</h4>
-          <div class="sol-check-list">
-            <div v-for="sol in solicitudesAprobadas" :key="sol.id" class="sol-check-item">
-              <label>
-                <input type="checkbox" :value="sol.id" v-model="formOficio.solicitudes_ids" />
-                <strong>{{ sol.codigo }}</strong> - {{ sol.estudiante?.usuario?.nombre }} {{ sol.estudiante?.usuario?.apellidos }} ({{ sol.tipo_caso }})
-              </label>
+            <div class="modal-footer">
+              <button type="button" @click="modalOficio = false" class="btn-secondary">Cancelar</button>
+              <button type="submit" class="btn-primary" :disabled="loading || formOficio.solicitudes_ids.length === 0">
+                Emitir Oficio y Generar CSV
+              </button>
             </div>
-            <div v-if="solicitudesAprobadas.length === 0" class="no-records">
-              No hay casos con pago en estado APROBADA listos para remitir.
-            </div>
-          </div>
-          <div class="modal-footer">
-            <button type="button" @click="modalOficio = false" class="btn-secondary">Cancelar</button>
-            <button type="submit" class="btn-primary" :disabled="loading || formOficio.solicitudes_ids.length === 0">
-              Emitir Oficio y Generar CSV
-            </button>
-          </div>
-        </form>
+          </form>
+        </div>
       </div>
     </div>
   </div>
@@ -791,40 +815,107 @@ onMounted(cargarDatos);
   align-items: center;
   justify-content: center;
   z-index: 100;
+  padding: 1rem;
 }
 .modal-box {
   background: white;
   border-radius: 12px;
   width: 100%;
-  max-width: 520px;
+  max-width: 540px;
   padding: 1.5rem;
+  box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.2), 0 10px 10px -5px rgba(0, 0, 0, 0.1);
+  display: flex;
+  flex-direction: column;
+  max-height: 90vh;
 }
-.modal-lg { max-width: 760px; }
+.modal-box.modal-lg { 
+  max-width: 760px; 
+}
 .modal-header {
   display: flex;
   justify-content: space-between;
-  align-items: center;
+  align-items: flex-start;
   border-bottom: 1px solid #e2e8f0;
   padding-bottom: 0.8rem;
+  margin-bottom: 1rem;
+}
+.modal-header h3 {
+  margin: 0;
+  font-size: 1.25rem;
+  color: #1e293b;
+}
+.modal-subtitle {
+  margin: 0.2rem 0 0 0;
+  font-size: 0.85rem;
+  color: #64748b;
+}
+.btn-close {
+  background: transparent;
+  border: none;
+  cursor: pointer;
+  color: #64748b;
+  padding: 0.3rem;
+  border-radius: 6px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+.btn-close:hover {
+  background: #f1f5f9;
+  color: #0f172a;
+}
+.modal-body-scroll {
+  overflow-y: auto;
+  max-height: calc(90vh - 120px);
+  padding-right: 0.5rem;
 }
 .modal-footer {
   display: flex;
   justify-content: flex-end;
   gap: 0.8rem;
   margin-top: 1.5rem;
+  border-top: 1px solid #e2e8f0;
+  padding-top: 1rem;
+}
+.section-title {
+  font-size: 0.98rem;
+  font-weight: 700;
+  color: #1e293b;
+  margin: 1.2rem 0 0.6rem 0;
+  padding-bottom: 0.3rem;
+  border-bottom: 1px solid #f1f5f9;
+}
+.alert-box-info {
+  background: #eff6ff;
+  border: 1px solid #bfdbfe;
+  color: #1e40af;
+  padding: 0.75rem 1rem;
+  border-radius: 6px;
+  font-size: 0.85rem;
 }
 .form-group { margin-bottom: 1rem; }
-.form-group label { display: block; font-size: 0.85rem; font-weight: 600; margin-bottom: 0.3rem; }
+.form-group label { display: block; font-size: 0.85rem; font-weight: 600; margin-bottom: 0.3rem; color: #334155; }
 .form-group select, .form-group input, .form-group textarea {
   width: 100%;
   padding: 0.65rem 0.8rem;
   border: 1px solid #cbd5e1;
   border-radius: 6px;
+  box-sizing: border-box;
+  font-size: 0.9rem;
+}
+.form-group select:focus, .form-group input:focus, .form-group textarea:focus {
+  outline: none;
+  border-color: #0064e0;
+  box-shadow: 0 0 0 2px rgba(0, 100, 224, 0.15);
+}
+.form-control-sm {
+  padding: 0.35rem 0.5rem !important;
+  font-size: 0.85rem !important;
 }
 .row { display: flex; gap: 1rem; }
 .col { flex: 1; }
 .sol-check-list {
-  max-height: 200px;
+  max-height: 220px;
   overflow-y: auto;
   border: 1px solid #e2e8f0;
   padding: 0.5rem;
