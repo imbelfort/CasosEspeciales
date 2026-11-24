@@ -97,7 +97,7 @@
                 <button @click="verDetalle(sol)" class="btn-action">
                   <FileSearch :size="14" class="inline-icon" /> Expediente
                 </button>
-                <button v-if="sol.estado === 'ENVIADA' || sol.estado === 'OBSERVADA'" @click="abrirEvaluar(sol)" class="btn-action btn-eval">
+                <button v-if="sol.estado === 'ENVIADA' || sol.estado === 'OBSERVADA' || sol.estado === 'SUBSANADA'" @click="abrirEvaluar(sol)" class="btn-action btn-eval">
                   <Scale :size="14" class="inline-icon" /> Evaluar (CU3)
                 </button>
               </td>
@@ -129,6 +129,7 @@
             <tr>
               <th>Materia</th>
               <th>Grupo</th>
+              <th>Horario y Días</th>
               <th>Cupo Máximo</th>
               <th>Cupos Libres</th>
               <th>Estado</th>
@@ -139,6 +140,14 @@
             <tr v-for="g in grupos" :key="g.id">
               <td><strong>{{ g.materia?.sigla }}</strong> - {{ g.materia?.nombre }}</td>
               <td><span class="code-tag">{{ g.sigla_grupo }}</span></td>
+              <td>
+                <div v-if="g.horarios && g.horarios.length > 0" style="font-size: 0.82rem;">
+                  <span v-for="(h, hi) in g.horarios" :key="hi" style="display: block;">
+                    {{ h.dia?.substring(0, 3) }} {{ h.hora_inicio?.substring(0, 5) }}-{{ h.hora_fin?.substring(0, 5) }} ({{ h.aula }})
+                  </span>
+                </div>
+                <span v-else class="text-muted" style="font-size: 0.8rem;">Sin horario asignado</span>
+              </td>
               <td>{{ g.cupo_maximo }}</td>
               <td>
                 <span :style="{ color: g.cupos_disponibles === 0 ? '#dc2626' : '#16a34a', fontWeight: 'bold' }">
@@ -759,6 +768,8 @@ onMounted(cargarDatos);
 .status-badge.APROBADA { background: #dcfce7; color: #15803d; }
 .status-badge.RECHAZADA_DIRECCION { background: #fee2e2; color: #b91c1c; }
 .status-badge.REMITIDA_A_CPD { background: #f3e8ff; color: #7e22ce; }
+.status-badge.OBSERVADA { background: #ffedd5; color: #c2410c; }
+.status-badge.SUBSANADA { background: #e0e7ff; color: #3730a3; }
 .status-badge.ACTIVO { background: #dcfce7; color: #15803d; }
 .btn-action {
   padding: 0.35rem 0.7rem;

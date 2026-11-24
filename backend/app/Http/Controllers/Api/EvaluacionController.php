@@ -39,7 +39,7 @@ class EvaluacionController extends Controller
             // Bloqueo de fila estricto contra concurrencia
             $solicitud = Solicitud::lockForUpdate()->findOrFail($idSolicitud);
 
-            if ($solicitud->estado !== 'ENVIADA' && $solicitud->estado !== 'OBSERVADA') {
+            if ($solicitud->estado !== 'ENVIADA' && $solicitud->estado !== 'OBSERVADA' && $solicitud->estado !== 'SUBSANADA') {
                 return response()->json([
                     'error' => "La solicitud no puede ser evaluada en su estado actual ({$solicitud->estado})."
                 ], 422);

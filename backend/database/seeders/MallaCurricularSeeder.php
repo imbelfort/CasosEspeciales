@@ -117,22 +117,53 @@ class MallaCurricularSeeder extends Seeder
                     ]
                 );
 
-                // 4. Crear Grupos académicos en 'grupo' para que los estudiantes puedan solicitarlos en Casos Especiales
-                // (Creamos al menos 2 grupos: SA con cupo disponible y SB lleno/sobrecupo)
-                foreach (['SA', 'SB'] as $idx => $siglaGrupo) {
-                    $cupoMax = 40;
-                    // El grupo SB se crea con 0 cupos libres para probar casos de PARALELO_LLENO / SOBRECUPO
-                    $cuposLibres = ($siglaGrupo === 'SB') ? 0 : rand(3, 15);
-                    $docenteAsignado = $docentes[($materiaId + $idx) % count($docentes)];
+                // 4. Crear Grupos académicos en 'grupo' con sus respectivos horarios reales de la UAGRM
+                // Grupos típicos FICCT:
+                // - SA: Mañana (Lun-Mie-Vie 1h30m, ej: 07:00 a 08:30)
+                // - SB: Tarde (Mar-Jue 2h15m, ej: 14:00 a 16:15)
+                // - SC: Noche (Lun-Mie-Vie 1h30m, ej: 18:15 a 19:45 o Mar-Jue 18:15 a 20:30)
+                $configGrupos = [
+                    'SA' => [
+                        'turno' => 'Mañana',
+                        'dias' => ['LUNES', 'MIERCOLES', 'VIERNES'],
+                        'inicio' => '07:00:00',
+                        'fin' => '08:30:00',
+                        'aula' => '236-' . rand(10, 25),
+                        'cupos' => rand(3, 12)
+                    ],
+                    'SB' => [
+                        'turno' => 'Tarde',
+                        'dias' => ['MARTES', 'JUEVES'],
+                        'inicio' => '14:00:00',
+                        'fin' => '16:15:00',
+                        'aula' => '236-' . rand(10, 25),
+                        'cupos' => 0 // Cupo lleno para probar Caso Especial de Paralelo Lleno / Sobrecupo
+                    ],
+                    'SC' => [
+                        'turno' => 'Noche',
+                        'dias' => ['MARTES', 'JUEVES'],
+                        'inicio' => '18:15:00',
+                        'fin' => '20:30:00',
+                        'aula' => '236-' . rand(10, 25),
+                        'cupos' => rand(0, 8)
+                    ],
+                ];
 
-                    $existeGrupo = DB::table('grupo')
+                $gIdx = 0;
+                foreach ($configGrupos as $siglaGrupo => $cfg) {
+                    $cupoMax = 40;
+                    $cuposLibres = $cfg['cupos'];
+                    $docenteAsignado = $docentes[($materiaId + $gIdx) % count($docentes)];
+                    $gIdx++;
+
+                    $grupoId = DB::table('grupo')
                         ->where('id_materia', $materiaId)
                         ->where('id_periodo', $periodoId)
                         ->where('sigla_grupo', $siglaGrupo)
-                        ->exists();
+                        ->value('id');
 
-                    if (!$existeGrupo) {
-                        DB::table('grupo')->insert([
+                    if (!$grupoId) {
+                        $grupoId = DB::table('grupo')->insertGetId([
                             'id_materia' => $materiaId,
                             'id_periodo' => $periodoId,
                             'sigla_grupo' => $siglaGrupo,
@@ -142,6 +173,21 @@ class MallaCurricularSeeder extends Seeder
                             'cupo_excepcional_maximo' => 5,
                             'estado' => 'ABIERTO'
                         ]);
+                    }
+
+                    // Insertar horarios de clases para este grupo
+                    foreach ($cfg['dias'] as $dia) {
+                        DB::table('horario_grupo')->updateOrInsert(
+                            [
+                                'id_grupo' => $grupoId,
+                                'dia' => $dia,
+                            ],
+                            [
+                                'hora_inicio' => $cfg['inicio'],
+                                'hora_fin' => $cfg['fin'],
+                                'aula' => $cfg['aula']
+                            ]
+                        );
                     }
                 }
             }

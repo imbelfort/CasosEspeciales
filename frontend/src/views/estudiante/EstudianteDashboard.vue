@@ -136,7 +136,10 @@
                 </thead>
                 <tbody>
                   <tr v-for="(mItem, idx) in materiasSeleccionadasForm" :key="idx">
-                    <td><strong>{{ getNombreMateriaPorGrupo(mItem.id_grupo) }}</strong></td>
+                    <td>
+                      <strong>{{ getNombreMateriaPorGrupo(mItem.id_grupo) }}</strong><br>
+                      <small class="text-muted"><Clock :size="12" class="inline-icon" /> {{ getHorarioPorGrupoId(mItem.id_grupo) }}</small>
+                    </td>
                     <td><span class="code-tag">Grupo {{ getSiglaGrupo(mItem.id_grupo) }}</span></td>
                     <td>
                       <input v-model="mItem.motivo" placeholder="Ej: Choque, levantamiento..." class="form-control-sm" />
@@ -160,10 +163,10 @@
             <div v-if="materiasSeleccionadasForm.length < limiteMateriasCaso" class="add-materia-row">
               <div class="form-group col-select">
                 <select v-model="grupoParaAgregar">
-                  <option value="" disabled>Seleccione la asignatura y paralelo a agregar...</option>
+                  <option value="" disabled>Seleccione la asignatura, grupo (SA, SB, SC) y horario...</option>
                   <optgroup v-for="m in materiasDisponiblesParaAgregar" :key="m.id" :label="m.sigla + ' - ' + m.nombre">
                     <option v-for="g in m.grupos" :key="g.id" :value="g.id">
-                      {{ m.sigla }} - Grupo {{ g.sigla_grupo }} (Cupo máx: {{ g.cupo_maximo }} | Libres: {{ g.cupos_disponibles }})
+                      {{ m.sigla }} &bull; {{ getDetalleGrupoHorario(g) }}
                     </option>
                   </optgroup>
                 </select>
@@ -206,50 +209,19 @@
       </div>
     </div>
 
-    <!-- MODAL AGREGAR MATERIA / GRUPO (CU2) -->
-    <div v-if="modalGrupo" class="modal-backdrop">
-      <div class="modal-box">
-        <div class="modal-header">
-          <h3>Vincular Materia a Solicitud {{ solicitudActiva?.codigo }}</h3>
-          <button @click="modalGrupo = false" class="btn-close">
-            <X :size="18" />
-          </button>
-        </div>
-        <form @submit.prevent="guardarGrupo" class="modal-form">
-          <p class="auth-desc">Solo se permiten materias pertenecientes a tu carrera y plan de estudio.</p>
-          <div class="form-group">
-            <label>Seleccionar Materia y Grupo (*):</label>
-            <select v-model="formGrupo.id_grupo" required>
-              <option value="" disabled>Seleccione...</option>
-              <optgroup v-for="m in materias" :key="m.id" :label="m.sigla + ' - ' + m.nombre">
-                <option v-for="g in m.grupos" :key="g.id" :value="g.id">
-                  Grupo {{ g.sigla_grupo }} (Cupos libres: {{ g.cupos_disponibles }})
-                </option>
-              </optgroup>
-            </select>
-          </div>
-          <div class="form-group">
-            <label>Motivo específico para esta materia (opcional):</label>
-            <input v-model="formGrupo.motivo" placeholder="Ej: Choque de horario con otra asignatura" />
-          </div>
-          <div class="modal-footer">
-            <button type="button" @click="modalGrupo = false" class="btn-secondary">Cancelar</button>
-            <button type="submit" class="btn-primary" :disabled="loading">Agregar Materia</button>
-          </div>
-        </form>
-      </div>
-    </div>
-
-    <!-- MODAL ADJUNTAR ARCHIVO RESPALDO (CU2) -->
+    <!-- MODAL SUBSANAR ARCHIVO RESPALDO (CU2) -->
     <div v-if="modalRespaldo" class="modal-backdrop">
       <div class="modal-box">
         <div class="modal-header">
-          <h3>Adjuntar Respaldo a {{ solicitudActiva?.codigo }}</h3>
+          <h3>Subsanar Respaldo para Solicitud {{ solicitudActiva?.codigo }}</h3>
           <button @click="modalRespaldo = false" class="btn-close">
             <X :size="18" />
           </button>
         </div>
         <form @submit.prevent="subirRespaldo" class="modal-form">
+          <p class="auth-desc" style="margin-bottom: 1rem; color: #b45309; background: #fef3c7; padding: 0.6rem; border-radius: 6px;">
+            <strong>Observación de Dirección:</strong> {{ solicitudActiva?.observaciones || solicitudActiva?.evaluacion?.observaciones || 'Favor adjuntar el respaldo académico requerido.' }}
+          </p>
           <div class="form-group">
             <label>Tipo de Documento:</label>
             <select v-model="formRespaldo.tipo_archivo">
@@ -259,12 +231,14 @@
             </select>
           </div>
           <div class="form-group">
-            <label>Archivo (PDF / Imagen):</label>
+            <label>Archivo (PDF / Imagen) (*):</label>
             <input type="file" @change="e => archivoRespaldo = e.target.files[0]" required accept=".pdf,.jpg,.jpeg,.png" />
           </div>
           <div class="modal-footer">
             <button type="button" @click="modalRespaldo = false" class="btn-secondary">Cancelar</button>
-            <button type="submit" class="btn-primary" :disabled="loading">Subir Archivo</button>
+            <button type="submit" class="btn-primary" :disabled="loading">
+              {{ loading ? 'Enviando...' : 'Subir Respaldo y Subsanar Trámite' }}
+            </button>
           </div>
         </form>
       </div>
@@ -329,11 +303,18 @@
             <span v-if="solicitudActiva.motivo_rechazo" class="text-danger"><br><strong>Motivo de Rechazo:</strong> {{ solicitudActiva.motivo_rechazo }}</span>
           </div>
 
-          <h4 class="mt-4">Materias / Grupos Asignados</h4>
+          <h4 class="mt-4">Materias, Grupos y Horarios Asignados</h4>
           <ul class="clean-list">
-            <li v-for="sg in solicitudActiva.grupos" :key="sg.id">
+            <li v-for="sg in solicitudActiva.grupos" :key="sg.id" style="margin-bottom: 0.5rem;">
               <BookOpen :size="15" class="inline-icon text-primary" />
-              <strong>{{ sg.grupo?.materia?.sigla }}</strong> - {{ sg.grupo?.materia?.nombre }} (Grupo {{ sg.grupo?.sigla_grupo }})
+              <strong>{{ sg.grupo?.materia?.sigla }}</strong> - {{ sg.grupo?.materia?.nombre }} 
+              <span class="code-tag" style="margin-left: 0.4rem;">Grupo {{ sg.grupo?.sigla_grupo }}</span>
+              <div v-if="sg.grupo?.horarios && sg.grupo.horarios.length > 0" class="text-muted text-sm" style="margin-left: 1.5rem; font-size: 0.8rem;">
+                <Clock :size="12" class="inline-icon" /> 
+                <span v-for="(h, hi) in sg.grupo.horarios" :key="hi" style="margin-right: 0.6rem;">
+                  {{ h.dia }} {{ h.hora_inicio?.substring(0, 5) }}-{{ h.hora_fin?.substring(0, 5) }} (Aula {{ h.aula }})
+                </span>
+              </div>
             </li>
             <li v-if="!solicitudActiva.grupos || solicitudActiva.grupos.length === 0" class="text-muted">
               No se han vinculado materias aún a este caso.
@@ -438,7 +419,6 @@ const materiaSeleccionadaMalla = ref(null);
 
 const modalAvance = ref(false);
 const modalNueva = ref(false);
-const modalGrupo = ref(false);
 const modalRespaldo = ref(false);
 const modalPago = ref(false);
 const modalPagoQr = ref(false);
@@ -450,7 +430,6 @@ const archivoRespaldo = ref(null);
 const archivoComprobante = ref(null);
 
 const formNueva = ref({ id_periodo: '', tipo_caso: 'CASO_ESPECIAL', motivo: '', id_grupo: '' });
-const formGrupo = ref({ id_grupo: '', motivo: '' });
 const formRespaldo = ref({ tipo_archivo: 'RESPALDO' });
 
 const materiasSeleccionadasForm = ref([]);
@@ -481,10 +460,18 @@ const limiteCarreraAlcanzado = computed(() => {
 
 const materiasDisponiblesParaAgregar = computed(() => {
   const idsGruposElegidos = materiasSeleccionadasForm.value.map(m => m.id_grupo);
-  return materias.value.map(m => ({
-    ...m,
-    grupos: (m.grupos || []).filter(g => !idsGruposElegidos.includes(g.id))
-  })).filter(m => m.grupos.length > 0);
+  
+  // Obtener IDs de materias ya aprobadas o cursadas satisfactoriamente
+  const idsMateriasAprobadas = historicoAcademico.value
+    .filter(h => h.estado_materia === 'APROBADA' || (h.nota_final && h.nota_final >= 51))
+    .map(h => h.id_materia);
+
+  return materias.value
+    .filter(m => !idsMateriasAprobadas.includes(m.id)) // Excluir materias aprobadas
+    .map(m => ({
+      ...m,
+      grupos: (m.grupos || []).filter(g => !idsGruposElegidos.includes(g.id))
+    })).filter(m => m.grupos.length > 0);
 });
 
 const getNombreMateriaPorGrupo = (idGrupo) => {
@@ -501,6 +488,40 @@ const getSiglaGrupo = (idGrupo) => {
     if (g) return g.sigla_grupo;
   }
   return 'SA';
+};
+
+const getDetalleGrupoHorario = (grupo) => {
+  if (!grupo) return '';
+  const cuposTxt = grupo.cupos_disponibles === 0 ? '¡0 cupos - LLENO!' : `${grupo.cupos_disponibles} cupos libres`;
+  
+  if (!grupo.horarios || grupo.horarios.length === 0) {
+    return `Grupo ${grupo.sigla_grupo} (${cuposTxt})`;
+  }
+
+  // Agrupar días y horas
+  const diasAbrev = grupo.horarios.map(h => {
+    const d = h.dia?.substring(0, 3) || '';
+    const ini = h.hora_inicio?.substring(0, 5) || '';
+    const fin = h.hora_fin?.substring(0, 5) || '';
+    return `${d} ${ini}-${fin}`;
+  });
+
+  const aula = grupo.horarios[0]?.aula ? ` | Aula ${grupo.horarios[0].aula}` : '';
+  const docente = grupo.docente ? ` | Doc: ${grupo.docente}` : '';
+
+  return `Grupo ${grupo.sigla_grupo} [${diasAbrev.join(', ')}${aula}${docente}] - (${cuposTxt})`;
+};
+
+const getHorarioPorGrupoId = (idGrupo) => {
+  for (const m of materias.value) {
+    const g = (m.grupos || []).find(gr => gr.id === idGrupo);
+    if (g && g.horarios && g.horarios.length > 0) {
+      const dias = g.horarios.map(h => `${h.dia?.substring(0, 3)} ${h.hora_inicio?.substring(0, 5)}-${h.hora_fin?.substring(0, 5)}`).join(', ');
+      const aula = g.horarios[0]?.aula ? ` (Aula ${g.horarios[0].aula})` : '';
+      return `${dias}${aula}`;
+    }
+  }
+  return 'Horario a confirmar';
 };
 
 const agregarMateriaAlForm = () => {
@@ -590,6 +611,15 @@ const materiasSolicitadasActivas = computed(() => {
 });
 
 const seleccionarMateriaDesdeMalla = (materia) => {
+  // Validar si la materia ya fue aprobada
+  const yaAprobada = historicoAcademico.value.some(
+    h => h.id_materia === materia.id && (h.estado_materia === 'APROBADA' || (h.nota_final && h.nota_final >= 51))
+  );
+  if (yaAprobada) {
+    alert(`La materia ${materia.sigla} (${materia.nombre}) ya fue aprobada previamente. No es posible solicitarla en caso especial.`);
+    return;
+  }
+
   if (materiaSeleccionadaMalla.value?.id === materia.id) {
     materiaSeleccionadaMalla.value = null;
     return;
@@ -690,27 +720,6 @@ const verDetalle = async (sol) => {
     modalDetalle.value = true;
   } catch (e) {
     alert('Error al cargar expediente.');
-  }
-};
-
-const abrirAgregarGrupo = (sol) => {
-  solicitudActiva.value = sol;
-  formGrupo.value.id_grupo = '';
-  formGrupo.value.motivo = '';
-  modalGrupo.value = true;
-};
-
-const guardarGrupo = async () => {
-  loading.value = true;
-  try {
-    await api.post(`/solicitudes/${solicitudActiva.value.id}/grupos`, formGrupo.value);
-    modalGrupo.value = false;
-    alert('Materia agregada exitosamente.');
-    cargarDatos();
-  } catch (e) {
-    alert(e.response?.data?.error || 'Error al agregar materia.');
-  } finally {
-    loading.value = false;
   }
 };
 
@@ -939,6 +948,7 @@ onMounted(cargarDatos);
 .status-badge.REMITIDA_A_CPD { background: #f3e8ff; color: #7e22ce; }
 .status-badge.HABILITADA { background: #bbf7d0; color: #166534; }
 .status-badge.OBSERVADA { background: #ffedd5; color: #c2410c; }
+.status-badge.SUBSANADA { background: #e0e7ff; color: #3730a3; }
 .actions-cell {
   display: flex;
   gap: 0.4rem;

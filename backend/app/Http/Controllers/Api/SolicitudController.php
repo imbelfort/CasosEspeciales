@@ -136,6 +136,22 @@ class SolicitudController extends Controller
                     return response()->json(['error' => "La materia {$grupo->materia?->sigla} no pertenece a la carrera del estudiante."], 422);
                 }
 
+                // Regla UAGRM: No se puede solicitar una materia que ya haya sido aprobada
+                $materiaYaAprobada = DB::table('estudiante_materia_historial')
+                    ->where('id_estudiante', $user->id_usuario)
+                    ->where('id_materia', $grupo->id_materia)
+                    ->where(function ($q) {
+                        $q->where('estado_materia', 'APROBADA')
+                          ->orWhere('nota_final', '>=', 51);
+                    })
+                    ->exists();
+
+                if ($materiaYaAprobada) {
+                    return response()->json([
+                        'error' => "La materia {$grupo->materia?->sigla} ({$grupo->materia?->nombre}) ya fue aprobada en tu historial académico. No es posible solicitarla en caso especial."
+                    ], 422);
+                }
+
                 SolicitudGrupo::create([
                     'id_solicitud' => $solicitud->id,
                     'id_grupo' => $grupo->id,
@@ -254,21 +270,35 @@ class SolicitudController extends Controller
             return response()->json(['error' => 'La solicitud ya fue enviada y se encuentra en revisión. Solo se pueden adjuntar nuevos respaldos si la solicitud está OBSERVADA.'], 422);
         }
 
-        $file = $request->file('archivo');
-        $ruta = $file->store("archivos_solicitudes/{$solicitud->id}", 'local');
+        return DB::transaction(function () use ($user, $solicitud, $request, $file) {
+            $ruta = $file->store("archivos_solicitudes/{$solicitud->id}", 'local');
 
-        $archivo = ArchivoSolicitud::create([
-            'id_solicitud' => $solicitud->id,
-            'nombre_archivo' => $file->getClientOriginalName(),
-            'tipo_archivo' => $request->tipo_archivo,
-            'ruta_archivo' => $ruta,
-            'fecha_subida' => now(),
-        ]);
+            $archivo = ArchivoSolicitud::create([
+                'id_solicitud' => $solicitud->id,
+                'nombre_archivo' => $file->getClientOriginalName(),
+                'tipo_archivo' => $request->tipo_archivo,
+                'ruta_archivo' => $ruta,
+                'fecha_subida' => now(),
+            ]);
 
-        return response()->json([
-            'mensaje' => 'Archivo adjuntado con éxito',
-            'archivo' => $archivo
-        ], 201);
+            // Al subsanar la observación adjuntando el documento requerido,
+            // la solicitud transiciona formalmente a SUBSANADA para ser reevaluada por Dirección
+            AuditoriaNotificacionService::registrarTransicion(
+                $solicitud,
+                'SUBSANADA',
+                'SUBSANACION_OBSERVACION',
+                $user->id_usuario,
+                "Respaldo adjuntado por el estudiante ({$file->getClientOriginalName()}). Observación subsanada.",
+                "Solicitud Subsanada - {$solicitud->codigo}",
+                "El estudiante ha adjuntado el documento solicitado. El caso {$solicitud->codigo} se encuentra ahora en estado SUBSANADA y listo para reevaluación."
+            );
+
+            return response()->json([
+                'mensaje' => 'Respaldo adjuntado con éxito. Tu solicitud ha sido actualizada a SUBSANADA y está lista para reevaluación.',
+                'archivo' => $archivo,
+                'solicitud' => $solicitud
+            ], 201);
+        });
     }
 
     /**
