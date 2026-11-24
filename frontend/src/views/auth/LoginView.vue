@@ -6,7 +6,7 @@
         <div class="meta-logo-box">FICCT</div>
         <h2 class="card-title">Acceso al Sistema</h2>
         <p class="card-subtitle">
-          Sistema de Trámite de Casos Especiales &bull; Facultad de Ciencias de la Computación y Telecomunicaciones
+          Sistema de Trámite de Casos Especiales &bull; Facultad de Ingeniería en Ciencias de la Computación y Telecomunicaciones
         </p>
       </div>
 

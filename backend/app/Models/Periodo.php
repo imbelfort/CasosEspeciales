@@ -13,7 +13,20 @@ class Periodo extends Model
         'gestion',
         'fecha_inicio',
         'fecha_fin',
-        'estado'
+        'estado',
+        'fecha_inicio_solicitud',
+        'fecha_fin_solicitud',
+        'fecha_inicio_evaluacion',
+        'fecha_fin_evaluacion',
+        'fecha_inicio_ejecucion',
+        'fecha_fin_ejecucion',
+        'costo_arancel_caso',
+        'max_materias_por_caso',
+        'max_casos_carrera',
+    ];
+
+    protected $casts = [
+        'costo_arancel_caso' => 'decimal:2',
     ];
 
     public function grupos()

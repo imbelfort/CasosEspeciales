@@ -3,11 +3,16 @@
     <div class="view-header">
       <div>
         <h2>Centro de Procesamiento de Datos (CU6 - CPD)</h2>
-        <p class="view-desc">Procesamiento técnico final de casos especiales remitidos por Dirección.</p>
+        <p class="view-desc">Procesamiento técnico final de casos especiales remitidos por Dirección y gestión del cronograma.</p>
       </div>
-      <button @click="cargarPendientes" class="btn-secondary">
-        <RefreshCw :size="15" class="inline-icon" /> Actualizar Bandeja
-      </button>
+      <div class="header-btns">
+        <button @click="modalConfigPeriodo = true" class="btn-primary">
+          <Calendar :size="15" class="inline-icon" /> Parámetros y Arancel
+        </button>
+        <button @click="cargarPendientes" class="btn-secondary">
+          <RefreshCw :size="15" class="inline-icon" /> Actualizar
+        </button>
+      </div>
     </div>
 
     <!-- OFICIOS REMITIDOS A CPD -->
@@ -54,6 +59,67 @@
       No hay oficios pendientes de habilitación en CPD.
     </div>
 
+    <!-- MODAL CONFIGURACIÓN DE PARÁMETROS, CRONOGRAMA Y ARANCEL (CPD) -->
+    <div v-if="modalConfigPeriodo" class="modal-backdrop">
+      <div class="modal-box modal-lg">
+        <div class="modal-header">
+          <h3>Parámetros de Casos Especiales (Gestión {{ periodoActivo?.gestion || '1-2026' }})</h3>
+          <button @click="modalConfigPeriodo = false" class="btn-close">
+            <X :size="18" />
+          </button>
+        </div>
+        <form @submit.prevent="guardarConfigPeriodo" class="modal-form">
+          <div class="alert-box-info mb-3">
+            Configura el rango oficial de fechas en el que los estudiantes pueden registrar solicitudes de casos especiales y el monto del arancel (UAGRM).
+          </div>
+          
+          <div class="row">
+            <div class="form-group col">
+              <label>Costo Arancel por Caso Especial (Bs.):</label>
+              <input v-model.number="formConfig.costo_arancel_caso" type="number" step="0.5" required />
+            </div>
+            <div class="form-group col">
+              <label>Estado del Período:</label>
+              <input :value="periodoActivo?.estado || 'ACTIVO'" disabled />
+            </div>
+          </div>
+
+          <h4 class="mt-3">Límites y Reglas Institucionales (CPD / UAGRM)</h4>
+          <div class="row">
+            <div class="form-group col">
+              <label>Máx. Materias por Solicitud:</label>
+              <input v-model.number="formConfig.max_materias_por_caso" type="number" min="1" max="10" required />
+              <small class="text-muted">Habitual: 2 a 5 materias (CPD define cuántas habilita).</small>
+            </div>
+            <div class="form-group col">
+              <label>Límite Histórico Carrera por Alumno:</label>
+              <input v-model.number="formConfig.max_casos_carrera" type="number" min="1" max="10" required />
+              <small class="text-muted">Norma: máximo 5 casos en toda la carrera.</small>
+            </div>
+          </div>
+
+          <h4 class="mt-3">Período Oficial de Recepción de Solicitudes</h4>
+          <div class="row">
+            <div class="form-group col">
+              <label>Fecha Inicio de Recepción:</label>
+              <input v-model="formConfig.fecha_inicio_solicitud" type="date" required />
+            </div>
+            <div class="form-group col">
+              <label>Fecha Límite de Recepción:</label>
+              <input v-model="formConfig.fecha_fin_solicitud" type="date" required />
+            </div>
+          </div>
+
+          <div class="modal-footer">
+            <button type="button" @click="modalConfigPeriodo = false" class="btn-secondary">Cancelar</button>
+            <button type="submit" class="btn-primary" :disabled="guardandoConfig">
+              {{ guardandoConfig ? 'Guardando...' : 'Guardar Parámetros' }}
+            </button>
+          </div>
+        </form>
+      </div>
+    </div>
+
     <!-- MODAL RESPONDER CPD (CU6) -->
     <div v-if="modalRespuesta && solicitudActiva" class="modal-backdrop">
       <div class="modal-box">
@@ -69,6 +135,38 @@
               <option value="OBSERVADO">OBSERVADO</option>
               <option value="RECHAZADO">RECHAZADO</option>
             </select>
+          </div>
+
+          <!-- Selección granular de materias habilitadas por CPD -->
+          <div v-if="solicitudActiva.grupos && solicitudActiva.grupos.length > 0" class="form-group">
+            <label>Habilitación Técnica por Asignatura (CPD habilita cupo final):</label>
+            <div class="table-responsive">
+              <table class="data-table">
+                <thead>
+                  <tr>
+                    <th>Materia / Grupo</th>
+                    <th>Estado de Habilitación</th>
+                    <th>Observación Técnica</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  <tr v-for="sg in formRespMaterias" :key="sg.id">
+                    <td><strong>{{ sg.materia_sigla }}</strong> (Gr. {{ sg.sigla_grupo }})</td>
+                    <td>
+                      <select v-model="sg.estado" class="form-control-sm">
+                        <option value="HABILITADA">HABILITADA (Cupo asignado)</option>
+                        <option value="RECHAZADA_CPD">RECHAZADA (Sin cupo CPD)</option>
+                        <option value="PENDIENTE">PENDIENTE</option>
+                      </select>
+                    </td>
+                    <td>
+                      <input v-model="sg.observacion" placeholder="Detalle técnico CPD..." class="form-control-sm" />
+                    </td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+            <small class="text-muted">Nota: De las materias solicitadas, CPD puede habilitar solo las que tengan cupo técnico disponible en el sistema central.</small>
           </div>
           <div class="form-group">
             <label>Código Único de Respuesta (*):</label>
@@ -90,23 +188,68 @@
 
 <script setup>
 import { ref, onMounted } from 'vue';
-import { RefreshCw, CheckSquare, X } from '@lucide/vue';
+import { RefreshCw, CheckSquare, X, Calendar } from '@lucide/vue';
 import api from '../../services/api';
 
 const oficios = ref([]);
+const periodos = ref([]);
+const periodoActivo = ref(null);
 const loading = ref(false);
+const guardandoConfig = ref(false);
 const modalRespuesta = ref(false);
+const modalConfigPeriodo = ref(false);
 const oficioActivo = ref(null);
 const solicitudActiva = ref(null);
 
 const formResp = ref({ resultado: 'HABILITADO', codigo_respuesta: '', observaciones: '' });
+const formRespMaterias = ref([]);
+const formConfig = ref({
+  costo_arancel_caso: 10,
+  fecha_inicio_solicitud: '2026-03-23',
+  fecha_fin_solicitud: '2026-03-24',
+  fecha_inicio_evaluacion: '2026-03-25',
+  fecha_fin_evaluacion: '2026-03-26',
+  fecha_inicio_ejecucion: '2026-03-27',
+  fecha_fin_ejecucion: '2026-03-28',
+});
 
 const cargarPendientes = async () => {
   try {
-    const res = await api.get('/cpd/pendientes');
-    oficios.value = res.data;
+    const [resO, resP] = await Promise.all([
+      api.get('/cpd/pendientes'),
+      api.get('/catalogos/periodos')
+    ]);
+    oficios.value = resO.data;
+    periodos.value = resP.data;
+    if (periodos.value.length) {
+      periodoActivo.value = periodos.value[0];
+      formConfig.value.costo_arancel_caso = periodoActivo.value.costo_arancel_caso || 10;
+      formConfig.value.max_materias_por_caso = periodoActivo.value.max_materias_por_caso || 5;
+      formConfig.value.max_casos_carrera = periodoActivo.value.max_casos_carrera || 5;
+      formConfig.value.fecha_inicio_solicitud = periodoActivo.value.fecha_inicio_solicitud || '2026-03-23';
+      formConfig.value.fecha_fin_solicitud = periodoActivo.value.fecha_fin_solicitud || '2026-03-24';
+      formConfig.value.fecha_inicio_evaluacion = periodoActivo.value.fecha_inicio_evaluacion || '2026-03-25';
+      formConfig.value.fecha_fin_evaluacion = periodoActivo.value.fecha_fin_evaluacion || '2026-03-26';
+      formConfig.value.fecha_inicio_ejecucion = periodoActivo.value.fecha_inicio_ejecucion || '2026-03-27';
+      formConfig.value.fecha_fin_ejecucion = periodoActivo.value.fecha_fin_ejecucion || '2026-03-28';
+    }
   } catch (e) {
     console.error(e);
+  }
+};
+
+const guardarConfigPeriodo = async () => {
+  if (!periodoActivo.value?.id) return;
+  guardandoConfig.value = true;
+  try {
+    const res = await api.put(`/cpd/periodo/${periodoActivo.value.id}/config`, formConfig.value);
+    periodoActivo.value = res.data.periodo;
+    modalConfigPeriodo.value = false;
+    alert('Parámetros de cronograma y arancel de casos especiales actualizados exitosamente.');
+  } catch (e) {
+    alert(e.response?.data?.error || 'Error al guardar configuración.');
+  } finally {
+    guardandoConfig.value = false;
   }
 };
 
@@ -115,6 +258,13 @@ const abrirRespuesta = (oficio, sol) => {
   solicitudActiva.value = sol;
   formResp.value.codigo_respuesta = `CPD-RES-${Date.now().toString().slice(-6)}`;
   formResp.value.observaciones = '';
+  formRespMaterias.value = (sol.grupos || []).map(sg => ({
+    id: sg.id,
+    materia_sigla: sg.grupo?.materia?.sigla || 'MAT',
+    sigla_grupo: sg.grupo?.sigla_grupo || 'SA',
+    estado: sg.estado === 'RECHAZADA' ? 'RECHAZADA_CPD' : 'HABILITADA',
+    observacion: sg.observacion_resolucion || ''
+  }));
   modalRespuesta.value = true;
 };
 
@@ -126,7 +276,12 @@ const ejecutarRespuesta = async () => {
       id_solicitud: solicitudActiva.value.id,
       resultado: formResp.value.resultado,
       codigo_respuesta: formResp.value.codigo_respuesta,
-      observaciones: formResp.value.observaciones
+      observaciones: formResp.value.observaciones,
+      materias_habilitadas: formRespMaterias.value.map(m => ({
+        id: m.id,
+        estado: m.estado,
+        observacion: m.observacion
+      }))
     });
     modalRespuesta.value = false;
     alert('Respuesta CPD procesada. Estudiante y Dirección notificados.');

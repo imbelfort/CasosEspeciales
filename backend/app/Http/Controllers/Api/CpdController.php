@@ -51,6 +51,10 @@ class CpdController extends Controller
             'resultado' => 'required|string|in:HABILITADO,OBSERVADO,RECHAZADO',
             'observaciones' => 'nullable|string',
             'referencia_respaldo' => 'nullable|string|max:150',
+            'materias_habilitadas' => 'nullable|array',
+            'materias_habilitadas.*.id' => 'required_with:materias_habilitadas|integer|exists:solicitud_grupo,id',
+            'materias_habilitadas.*.estado' => 'required_with:materias_habilitadas|string|in:HABILITADA,RECHAZADA_CPD,PENDIENTE',
+            'materias_habilitadas.*.observacion' => 'nullable|string',
         ]);
 
         return DB::transaction(function () use ($user, $validated) {
@@ -84,6 +88,24 @@ class CpdController extends Controller
                 'estado' => 'REGISTRADO'
             ]);
 
+            // Actualización granular de habilitación en CPD por cada materia/grupo
+            if (!empty($validated['materias_habilitadas'])) {
+                foreach ($validated['materias_habilitadas'] as $mh) {
+                    \App\Models\SolicitudGrupo::where('id', $mh['id'])
+                        ->where('id_solicitud', $solicitud->id)
+                        ->update([
+                            'estado' => $mh['estado'],
+                            'observacion_resolucion' => $mh['observacion'] ?? null
+                        ]);
+                }
+            } else {
+                if ($validated['resultado'] === 'HABILITADO') {
+                    \App\Models\SolicitudGrupo::where('id_solicitud', $solicitud->id)
+                        ->where('estado', 'APROBADA')
+                        ->update(['estado' => 'HABILITADA']);
+                }
+            }
+
             // Auditoría y Notificaciones al estudiante y dirección
             $asunto = "Resultado de Procesamiento CPD: {$validated['resultado']} - {$solicitud->codigo}";
             $mensaje = match ($validated['resultado']) {
@@ -108,5 +130,36 @@ class CpdController extends Controller
                 'solicitud' => $solicitud
             ], 201);
         });
+    }
+
+    /**
+     * Configuración del Período Académico, Cronograma de Fechas y Arancel (CPD / Autoridades)
+     */
+    public function actualizarPeriodoConfig(Request $request, $idPeriodo)
+    {
+        $user = $request->user();
+        if (!$user->tieneRol('CPD') && !$user->tieneRol('DIRECTOR')) {
+            return response()->json(['error' => 'Acceso denegado. Exclusivo para personal de CPD o Dirección.'], 403);
+        }
+
+        $validated = $request->validate([
+            'fecha_inicio_solicitud' => 'nullable|date',
+            'fecha_fin_solicitud' => 'nullable|date',
+            'fecha_inicio_evaluacion' => 'nullable|date',
+            'fecha_fin_evaluacion' => 'nullable|date',
+            'fecha_inicio_ejecucion' => 'nullable|date',
+            'fecha_fin_ejecucion' => 'nullable|date',
+            'costo_arancel_caso' => 'nullable|numeric|min:0',
+            'max_materias_por_caso' => 'nullable|integer|min:1|max:10',
+            'max_casos_carrera' => 'nullable|integer|min:1|max:10',
+        ]);
+
+        $periodo = \App\Models\Periodo::findOrFail($idPeriodo);
+        $periodo->update($validated);
+
+        return response()->json([
+            'mensaje' => 'Configuración de fechas y costo de arancel de Casos Especiales actualizada correctamente.',
+            'periodo' => $periodo
+        ]);
     }
 }

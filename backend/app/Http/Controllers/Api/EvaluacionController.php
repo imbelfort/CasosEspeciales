@@ -29,6 +29,10 @@ class EvaluacionController extends Controller
             'justificacion' => 'nullable|string',
             'observaciones' => 'nullable|string',
             'motivo_rechazo' => 'required_if:decision,RECHAZADA|nullable|string',
+            'materias_resolucion' => 'nullable|array',
+            'materias_resolucion.*.id' => 'required_with:materias_resolucion|integer|exists:solicitud_grupo,id',
+            'materias_resolucion.*.estado' => 'required_with:materias_resolucion|string|in:APROBADA,RECHAZADA,PENDIENTE',
+            'materias_resolucion.*.observacion' => 'nullable|string',
         ]);
 
         return DB::transaction(function () use ($user, $idSolicitud, $validated) {
@@ -66,6 +70,27 @@ class EvaluacionController extends Controller
                     'fecha_evaluacion' => now(),
                 ]
             );
+
+            // Actualizar resolución granular por materia solicitada (de 5 pueden aprobar 2, 3, etc.)
+            if (!empty($validated['materias_resolucion'])) {
+                foreach ($validated['materias_resolucion'] as $mr) {
+                    \App\Models\SolicitudGrupo::where('id', $mr['id'])
+                        ->where('id_solicitud', $solicitud->id)
+                        ->update([
+                            'estado' => $mr['estado'],
+                            'observacion_resolucion' => $mr['observacion'] ?? null
+                        ]);
+                }
+            } else {
+                // Si la decisión es APROBADA general, marcar grupos como APROBADA
+                if ($validated['decision'] === 'APROBADA') {
+                    \App\Models\SolicitudGrupo::where('id_solicitud', $solicitud->id)
+                        ->update(['estado' => 'APROBADA']);
+                } elseif ($validated['decision'] === 'RECHAZADA') {
+                    \App\Models\SolicitudGrupo::where('id_solicitud', $solicitud->id)
+                        ->update(['estado' => 'RECHAZADA']);
+                }
+            }
 
             // Mensajes de notificación según decisión
             $asunto = "Resolución de Solicitud {$solicitud->codigo}: {$validated['decision']}";

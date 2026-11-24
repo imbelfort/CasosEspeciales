@@ -4,7 +4,7 @@
     <div class="meta-promo-strip">
       <div class="promo-content">
         <span class="promo-tag">FICCT UAGRM</span>
-        <span class="promo-text">Facultad de Ciencias de la Computación y Telecomunicaciones &bull; Sistema Académico de Casos Especiales</span>
+        <span class="promo-text">Facultad de Ingeniería en Ciencias de la Computación y Telecomunicaciones &bull; Sistema Académico de Casos Especiales</span>
       </div>
     </div>
 
@@ -96,11 +96,6 @@
             <LogOut :size="15" />
           </button>
         </div>
-
-        <div v-else class="login-prompt-pill">
-          <ShieldCheck :size="15" class="inline-icon text-primary" />
-          <span>Portal Seguro</span>
-        </div>
       </div>
     </nav>
   </header>
@@ -119,8 +114,7 @@ import {
   AArrowUp, 
   AArrowDown,
   Type,
-  Contrast,
-  ShieldCheck
+  Contrast
 } from '@lucide/vue';
 import { useTheme } from '../../services/useTheme';
 import api from '../../services/api';

@@ -13,7 +13,8 @@ class SolicitudGrupo extends Model
         'id_solicitud',
         'id_grupo',
         'motivo',
-        'estado'
+        'estado',
+        'observacion_resolucion'
     ];
 
     public function solicitud()

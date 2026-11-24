@@ -25,57 +25,39 @@ class DatabaseSeeder extends Seeder
             DB::table('roles')->updateOrInsert(['id' => $r['id']], $r);
         }
 
-        // 2. Carreras de la FICCT
+        // 2. Carreras de la FICCT (Sincronizadas con las 4 mallas curriculares)
         $carreras = [
-            ['id' => 1, 'codigo' => '187-3', 'nombre' => 'Ingeniería Informática', 'facultad' => 'FICCT'],
-            ['id' => 2, 'codigo' => '187-4', 'nombre' => 'Ingeniería en Sistemas', 'facultad' => 'FICCT'],
-            ['id' => 3, 'codigo' => '187-5', 'nombre' => 'Ingeniería en Redes y Telecomunicaciones', 'facultad' => 'FICCT'],
+            ['id' => 1, 'codigo' => '187-6', 'nombre' => 'Ingeniería Informática', 'facultad' => 'Facultad de Ingeniería en Ciencias de la Computación y Telecomunicaciones'],
+            ['id' => 2, 'codigo' => '187-4', 'nombre' => 'Ingeniería en Sistemas', 'facultad' => 'Facultad de Ingeniería en Ciencias de la Computación y Telecomunicaciones'],
+            ['id' => 3, 'codigo' => '187-5', 'nombre' => 'Ingeniería en Redes y Telecomunicaciones', 'facultad' => 'Facultad de Ingeniería en Ciencias de la Computación y Telecomunicaciones'],
+            ['id' => 4, 'codigo' => '323-0', 'nombre' => 'Ingeniería Robótica', 'facultad' => 'Facultad de Ingeniería en Ciencias de la Computación y Telecomunicaciones'],
         ];
 
         foreach ($carreras as $c) {
             DB::table('carrera')->updateOrInsert(['id' => $c['id']], $c);
         }
 
-        // 3. Período Académico Activo (Formato estricto 1-YYYY o 2-YYYY)
+        // 3. Período Académico Activo y Cronograma de Casos Especiales (23 al 28 de marzo)
         DB::table('periodos')->updateOrInsert(
             ['gestion' => '1-2026'],
             [
-                'fecha_inicio' => '2026-02-15',
-                'fecha_fin' => '2026-07-15',
+                'fecha_inicio' => '2026-03-23',
+                'fecha_fin' => '2026-07-31',
                 'estado' => 'ACTIVO',
+                'fecha_inicio_solicitud' => '2026-03-23',
+                'fecha_fin_solicitud' => '2026-03-24',
+                'fecha_inicio_evaluacion' => '2026-03-25',
+                'fecha_fin_evaluacion' => '2026-03-26',
+                'fecha_inicio_ejecucion' => '2026-03-27',
+                'fecha_fin_ejecucion' => '2026-03-28',
+                'costo_arancel_caso' => 10.00,
             ]
         );
 
         $periodoId = DB::table('periodos')->where('gestion', '1-2026')->value('id');
 
-        // 4. Materias
-        $materias = [
-            ['id' => 1, 'sigla' => 'INF110', 'nombre' => 'Introducción a la Informática', 'nivel_semestre' => 1, 'creditos' => 4],
-            ['id' => 2, 'sigla' => 'INF210', 'nombre' => 'Programación I', 'nivel_semestre' => 2, 'creditos' => 4],
-            ['id' => 3, 'sigla' => 'INF310', 'nombre' => 'Estructuras de Datos I', 'nivel_semestre' => 3, 'creditos' => 5],
-            ['id' => 4, 'sigla' => 'INF418', 'nombre' => 'Sistemas de Información I', 'nivel_semestre' => 4, 'creditos' => 5],
-            ['id' => 5, 'sigla' => 'MAT101', 'nombre' => 'Cálculo I', 'nivel_semestre' => 1, 'creditos' => 4],
-        ];
-
-        foreach ($materias as $m) {
-            DB::table('materia')->updateOrInsert(['id' => $m['id']], $m);
-
-            // Asociar materias a las carreras (materia_carrera)
-            DB::table('materia_carrera')->updateOrInsert(['id_materia' => $m['id'], 'id_carrera' => 1]);
-            DB::table('materia_carrera')->updateOrInsert(['id_materia' => $m['id'], 'id_carrera' => 2]);
-        }
-
-        // 5. Grupos de las materias con cupos
-        $grupos = [
-            ['id' => 1, 'id_materia' => 1, 'id_periodo' => $periodoId, 'sigla_grupo' => 'SA', 'docente' => 'Ing. Juan Carlos Peinado', 'cupo_maximo' => 40, 'cupos_disponibles' => 15, 'cupo_excepcional_maximo' => 5, 'estado' => 'ABIERTO'],
-            ['id' => 2, 'id_materia' => 2, 'id_periodo' => $periodoId, 'sigla_grupo' => 'SB', 'docente' => 'Ing. Evans Balcazar', 'cupo_maximo' => 40, 'cupos_disponibles' => 5, 'cupo_excepcional_maximo' => 5, 'estado' => 'ABIERTO'],
-            ['id' => 3, 'id_materia' => 3, 'id_periodo' => $periodoId, 'sigla_grupo' => 'SC', 'docente' => 'Lic. Mario López', 'cupo_maximo' => 40, 'cupos_disponibles' => 0, 'cupo_excepcional_maximo' => 5, 'estado' => 'ABIERTO'],
-            ['id' => 4, 'id_materia' => 4, 'id_periodo' => $periodoId, 'sigla_grupo' => 'SD', 'docente' => 'Ing. Katime Busch', 'cupo_maximo' => 40, 'cupos_disponibles' => 8, 'cupo_excepcional_maximo' => 5, 'estado' => 'ABIERTO'],
-        ];
-
-        foreach ($grupos as $g) {
-            DB::table('grupo')->updateOrInsert(['id' => $g['id']], $g);
-        }
+        // 4. Poblar Mallas Curriculares Oficiales de la FICCT desde los archivos CSV
+        $this->call(MallaCurricularSeeder::class);
 
         // 6. Horarios de los grupos
         $horarios = [
@@ -231,6 +213,45 @@ class DatabaseSeeder extends Seeder
                     'semestre_actual' => $est['semestre']
                 ]
             );
+
+            // Simular Histórico Académico según la carrera y semestre del estudiante
+            // Materias de semestres anteriores quedan APROBADAS (con nota entre 65 y 95)
+            // Materias del semestre actual quedan CURSANDO (semestre 1-2026)
+            $materiasCarrera = DB::table('materia_carrera')
+                ->join('materia', 'materia_carrera.id_materia', '=', 'materia.id')
+                ->where('materia_carrera.id_carrera', $est['carrera_id'])
+                ->select('materia.id', 'materia.nivel_semestre')
+                ->get();
+
+            foreach ($materiasCarrera as $mc) {
+                if ($mc->nivel_semestre < $est['semestre']) {
+                    DB::table('estudiante_materia_historial')->updateOrInsert(
+                        [
+                            'id_estudiante' => $idU,
+                            'id_materia' => $mc->id,
+                            'gestion' => '1-2025'
+                        ],
+                        [
+                            'estado_materia' => 'APROBADA',
+                            'nota_final' => rand(65, 95),
+                            'sigla_grupo' => 'SA',
+                        ]
+                    );
+                } elseif ($mc->nivel_semestre == $est['semestre']) {
+                    DB::table('estudiante_materia_historial')->updateOrInsert(
+                        [
+                            'id_estudiante' => $idU,
+                            'id_materia' => $mc->id,
+                            'gestion' => '1-2026'
+                        ],
+                        [
+                            'estado_materia' => 'CURSANDO',
+                            'nota_final' => null,
+                            'sigla_grupo' => 'SB',
+                        ]
+                    );
+                }
+            }
         }
 
         // 9. Solicitudes de prueba existentes

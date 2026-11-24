@@ -1,5 +1,8 @@
 <template>
   <div class="role-view">
+    <!-- WIDGET DE ETAPAS DINÁMICAS PRO (En Curso / Próxima / Concluida) -->
+    <EtapasCronograma :periodo="periodos[0] || null" />
+
     <div class="view-header">
       <div>
         <h2>Panel de Dirección de Carrera (CU1, CU3, CU4, CU5)</h2>
@@ -265,6 +268,38 @@
               <option value="OBSERVADA">OBSERVADA</option>
             </select>
           </div>
+
+          <!-- Evaluación individual por materia solicitada -->
+          <div v-if="solicitudActiva.grupos && solicitudActiva.grupos.length > 0" class="form-group">
+            <label>Dictamen por Asignatura Solicitada:</label>
+            <div class="table-responsive">
+              <table class="data-table">
+                <thead>
+                  <tr>
+                    <th>Materia / Grupo</th>
+                    <th>Resolución</th>
+                    <th>Observación</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  <tr v-for="sg in formEvalMaterias" :key="sg.id">
+                    <td><strong>{{ sg.materia_sigla }}</strong> (Gr. {{ sg.sigla_grupo }})</td>
+                    <td>
+                      <select v-model="sg.estado" class="form-control-sm">
+                        <option value="APROBADA">APROBADA</option>
+                        <option value="RECHAZADA">RECHAZADA</option>
+                        <option value="PENDIENTE">PENDIENTE</option>
+                      </select>
+                    </td>
+                    <td>
+                      <input v-model="sg.observacion" placeholder="Motivo o condición..." class="form-control-sm" />
+                    </td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+            <small class="text-muted">La Dirección puede aprobar un subconjunto de las materias solicitadas por el estudiante.</small>
+          </div>
           <div v-if="formEval.decision === 'RECHAZADA'" class="form-group">
             <label>Motivo de Rechazo (*):</label>
             <textarea v-model="formEval.motivo_rechazo" rows="3" required></textarea>
@@ -370,6 +405,7 @@ import {
   X 
 } from '@lucide/vue';
 import api from '../../services/api';
+import EtapasCronograma from '../../components/common/EtapasCronograma.vue';
 
 const submodulo = ref('usuarios');
 const usuarios = ref([]);
@@ -401,6 +437,7 @@ const formEstudiante = ref({
 });
 
 const formEval = ref({ decision: 'APROBADA', justificacion: '', motivo_rechazo: '' });
+const formEvalMaterias = ref([]);
 const formReserva = ref({ id_grupo: '', cantidad: 1, motivo: '' });
 const formOficio = ref({ id_periodo: '', destinatario: 'Director CPD - UAGRM', referencia: 'Remisión de Casos Especiales Aprobados', solicitudes_ids: [] });
 
@@ -465,13 +502,27 @@ const abrirEvaluar = (sol) => {
   formEval.value.decision = 'APROBADA';
   formEval.value.justificacion = '';
   formEval.value.motivo_rechazo = '';
+  formEvalMaterias.value = (sol.grupos || []).map(sg => ({
+    id: sg.id,
+    materia_sigla: sg.grupo?.materia?.sigla || 'MAT',
+    sigla_grupo: sg.grupo?.sigla_grupo || 'SA',
+    estado: sg.estado === 'RECHAZADA' ? 'RECHAZADA' : 'APROBADA',
+    observacion: sg.observacion_resolucion || ''
+  }));
   modalEvaluar.value = true;
 };
 
 const ejecutarEvaluacion = async () => {
   loading.value = true;
   try {
-    await api.post(`/solicitudes/${solicitudActiva.value.id}/evaluar`, formEval.value);
+    await api.post(`/solicitudes/${solicitudActiva.value.id}/evaluar`, {
+      ...formEval.value,
+      materias_resolucion: formEvalMaterias.value.map(m => ({
+        id: m.id,
+        estado: m.estado,
+        observacion: m.observacion
+      }))
+    });
     modalEvaluar.value = false;
     alert('Evaluación guardada con éxito.');
     cargarDatos();

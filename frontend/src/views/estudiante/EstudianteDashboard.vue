@@ -1,15 +1,43 @@
 <template>
   <div class="role-view">
+    <!-- WIDGET DE ETAPAS DINÁMICAS PRO (En Curso / Próxima / Concluida) -->
+    <EtapasCronograma :periodo="periodoActivo" />
+
+    <!-- MALLA CURRICULAR DIGITAL INTERACTIVA (Sin marcar papeles) -->
+    <MallaCurricularDigital 
+      :materias="materias" 
+      :materias-solicitadas-ids="materiasSolicitadasActivas"
+      :materias-historico-map="historicoMap"
+      :materia-seleccionada="materiaSeleccionadaMalla"
+      :semestre-actual-estudiante="usuario?.estudiante?.semestre_actual || 5"
+      @select-materia="seleccionarMateriaDesdeMalla"
+    />
+
     <div class="view-header">
       <div>
         <h2>Mis Solicitudes de Casos Especiales (CU2)</h2>
         <p class="view-desc">
-          Como estudiante regular, puedes registrar nuevas solicitudes, asociar materias de tu carrera, adjuntar respaldos y subir el comprobante de arancel una vez aprobado por Dirección.
+          Tu historial académico y registro están verificados automáticamente en el sistema. Puedes solicitar de 1 hasta {{ limiteMateriasCaso }} asignaturas por caso (por lo general 2). Límite institucional: 1 solicitud por temporada y máx. 5 casos en toda la carrera.
         </p>
       </div>
-      <button @click="abrirModalRegistro" class="btn-primary">
-        <Plus :size="16" class="btn-icon" /> Registrar Nueva Solicitud (CU2)
+      <button 
+        @click="abrirModalRegistro" 
+        class="btn-primary" 
+        :disabled="tieneCasoEnTemporada || limiteCarreraAlcanzado"
+        :title="tieneCasoEnTemporada ? 'Ya tienes un caso registrado en este período. Solo se permite 1 por temporada.' : (limiteCarreraAlcanzado ? 'Has alcanzado el límite máximo de casos en tu carrera (5).' : 'Registrar nueva solicitud')"
+      >
+        <Plus :size="16" class="btn-icon" /> Registrar Solicitud de Caso Especial
       </button>
+    </div>
+
+    <!-- BANNER DE RESTRICCIONES INSTITUCIONALES -->
+    <div v-if="tieneCasoEnTemporada" class="banner-aviso-info">
+      <AlertCircle :size="16" class="inline-icon text-info" />
+      <span>Ya tienes una solicitud activa registrada en la gestión actual (<strong>{{ casoActivoTemporada?.codigo }}</strong> en estado <strong>{{ casoActivoTemporada?.estado }}</strong>). La normativa UAGRM establece 1 solicitud por temporada.</span>
+    </div>
+    <div v-else-if="limiteCarreraAlcanzado" class="banner-aviso-warn">
+      <AlertCircle :size="16" class="inline-icon text-warning" />
+      <span>Has alcanzado el límite institucional máximo de 5 casos especiales aprobados en tu carrera universitaria.</span>
     </div>
 
     <!-- BANDEJA DE MIS CASOS -->
@@ -33,9 +61,14 @@
             <td><span :class="['status-badge', sol.estado]">{{ sol.estado }}</span></td>
             <td>{{ formatearFecha(sol.fecha_solicitud) }}</td>
             <td class="actions-cell">
-              <button @click="verDetalle(sol)" class="btn-action">
+              <button @click="verDetalle(sol)" class="btn-action" title="Ver expediente completo">
                 <FileSearch :size="14" class="inline-icon" /> Expediente
               </button>
+
+              <!-- Descargar Carta Oficial en PDF lista para firmar o imprimir -->
+              <a :href="getCartaPdfUrl(sol)" target="_blank" class="btn-action btn-pdf" title="Descargar o imprimir Carta Oficial en PDF">
+                <Printer :size="14" class="inline-icon" /> Carta PDF
+              </a>
 
               <!-- Agregar Materia / Grupo si la solicitud está en ENVIADA -->
               <button v-if="sol.estado === 'ENVIADA'" @click="abrirAgregarGrupo(sol)" class="btn-action btn-add">
@@ -67,62 +100,109 @@
 
     <!-- MODAL REGISTRO DE SOLICITUD COMPLETO (CU2) -->
     <div v-if="modalNueva" class="modal-backdrop">
-      <div class="modal-box modal-lg">
+      <div class="modal-box modal-lg modal-container-dialog">
         <div class="modal-header">
           <h3>CU2: Formulario de Solicitud de Caso Especial</h3>
           <button @click="modalNueva = false" class="btn-close">
             <X :size="18" />
           </button>
         </div>
-        <form @submit.prevent="guardarSolicitud" class="modal-form">
-          <div class="row">
-            <div class="form-group col">
-              <label>Período Académico Activo (*):</label>
-              <select v-model="formNueva.id_periodo" required>
-                <option value="" disabled>Seleccione período...</option>
-                <option v-for="p in periodos" :key="p.id" :value="p.id">Gestión {{ p.gestion }} ({{ p.estado }})</option>
-              </select>
-            </div>
-            <div class="form-group col">
-              <label>Tipo de Caso Especial (*):</label>
-              <select v-model="formNueva.tipo_caso" required>
-                <option value="LEVANTAMIENTO_PREREQUISITO">Levantamiento de Prerrequisito</option>
-                <option value="EXCESO_MATERIAS">Exceso de Materias</option>
-                <option value="PARALELO_LLENO">Paralelo Lleno (Sobrecupo)</option>
-                <option value="NIVELACION">Nivelación</option>
-                <option value="CASO_ESPECIAL">Caso Especial General</option>
-                <option value="CORRECCION_NOTA">Corrección de Nota</option>
-                <option value="INCLUSION_MATERIA">Inclusión de Materia</option>
-              </select>
-            </div>
+        <form @submit.prevent="guardarSolicitud" class="modal-form modal-scrollable-form">
+          <div class="alert-box-info mb-3">
+            <strong>Normativa Universitaria FICCT - UAGRM:</strong> Puedes solicitar entre 1 y {{ limiteMateriasCaso }} asignaturas (habitualmente 2). CPD evaluará y habilitará los cupos técnicos disponibles (de las solicitadas te pueden habilitar un subconjunto según cupos y prerrequisitos). Solo se permite 1 trámite por período.
           </div>
 
           <div class="form-group">
-            <label>Materia y Grupo Solicitado (Opcional en registro inicial):</label>
-            <select v-model="formNueva.id_grupo">
-              <option value="">(Asignar más adelante o seleccionar ahora...)</option>
-              <optgroup v-for="m in materias" :key="m.id" :label="m.sigla + ' - ' + m.nombre">
-                <option v-for="g in m.grupos" :key="g.id" :value="g.id">
-                  Grupo {{ g.sigla_grupo }} (Cupo máx: {{ g.cupo_maximo }} | Disponibles: {{ g.cupos_disponibles }})
-                </option>
-              </optgroup>
+            <label>Período Académico Activo (*):</label>
+            <select v-model="formNueva.id_periodo" required>
+              <option value="" disabled>Seleccione período...</option>
+              <option v-for="p in periodos" :key="p.id" :value="p.id">Gestión Semestral {{ formatearGestion(p.gestion) }} - {{ p.estado }}</option>
             </select>
           </div>
 
-          <div class="form-group">
-            <label>Motivo y Justificación Académica (*):</label>
-            <textarea v-model="formNueva.motivo" rows="4" required placeholder="Detalla la situación que motiva tu solicitud de caso especial..."></textarea>
+          <!-- SELECCIONADOR DE MULTIPLES MATERIAS -->
+          <div class="materias-builder-section">
+            <div class="builder-header">
+              <label><strong>Materias a Solicitar ({{ materiasSeleccionadasForm.length }} de máx. {{ limiteMateriasCaso }}):</strong></label>
+            </div>
+
+            <!-- Listado de materias añadidas a la solicitud -->
+            <div class="table-responsive mb-2">
+              <table class="data-table">
+                <thead>
+                  <tr>
+                    <th>Materia</th>
+                    <th>Grupo Solicitado</th>
+                    <th>Motivo de la Materia</th>
+                    <th>Quitar</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  <tr v-for="(mItem, idx) in materiasSeleccionadasForm" :key="idx">
+                    <td><strong>{{ getNombreMateriaPorGrupo(mItem.id_grupo) }}</strong></td>
+                    <td><span class="code-tag">Grupo {{ getSiglaGrupo(mItem.id_grupo) }}</span></td>
+                    <td>
+                      <input v-model="mItem.motivo" placeholder="Ej: Choque, levantamiento..." class="form-control-sm" />
+                    </td>
+                    <td>
+                      <button type="button" @click="quitarMateriaForm(idx)" class="btn-action btn-danger-action" title="Quitar materia">
+                        <Trash2 :size="14" />
+                      </button>
+                    </td>
+                  </tr>
+                  <tr v-if="materiasSeleccionadasForm.length === 0">
+                    <td colspan="4" class="text-muted text-center py-2">
+                      Aún no has agregado materias. Selecciona una materia abajo y pulsa "+ Agregar Materia".
+                    </td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+
+            <!-- Controles para agregar otra materia -->
+            <div v-if="materiasSeleccionadasForm.length < limiteMateriasCaso" class="add-materia-row">
+              <div class="form-group col-select">
+                <select v-model="grupoParaAgregar">
+                  <option value="" disabled>Seleccione la asignatura y paralelo a agregar...</option>
+                  <optgroup v-for="m in materiasDisponiblesParaAgregar" :key="m.id" :label="m.sigla + ' - ' + m.nombre">
+                    <option v-for="g in m.grupos" :key="g.id" :value="g.id">
+                      {{ m.sigla }} - Grupo {{ g.sigla_grupo }} (Cupo máx: {{ g.cupo_maximo }} | Libres: {{ g.cupos_disponibles }})
+                    </option>
+                  </optgroup>
+                </select>
+              </div>
+              <button 
+                type="button" 
+                @click="agregarMateriaAlForm" 
+                class="btn-secondary btn-sm"
+                :disabled="!grupoParaAgregar"
+              >
+                <Plus :size="14" class="inline-icon" /> Agregar Asignatura
+              </button>
+            </div>
           </div>
 
-          <div class="form-group">
-            <label>Documento de Respaldo Inicial (Opcional - PDF / Imagen):</label>
-            <input type="file" @change="e => archivoRespaldoInicial = e.target.files[0]" accept=".pdf,.jpg,.jpeg,.png" />
+          <div class="form-group mt-3">
+            <label>Motivo y Justificación General del Caso Especial (*):</label>
+            <textarea v-model="formNueva.motivo" rows="3" required placeholder="Explica detalladamente las razones de tu solicitud académica dirigida a Dirección de Carrera..."></textarea>
           </div>
 
-          <div class="modal-footer">
+          <!-- DOCUMENTOS REQUERIDOS: CARTA OFICIAL FIRMADA Y RESPALDOS -->
+          <div class="documentos-card-box mt-3">
+            <h4>Documentación del Caso Especial (Física / Digital)</h4>
+            <p class="text-muted text-sm">
+              La carta formal en PDF debe ser firmada por el estudiante. Puedes descargar el borrador oficial desde tus solicitudes generadas, firmarla físicamente (o digitalmente) y adjuntarla aquí o en la bandeja:
+            </p>
+            <div class="form-group mb-0">
+              <label>Carta Firmada / Documento de Respaldo (PDF o Imagen escaneada):</label>
+              <input type="file" @change="e => archivoRespaldoInicial = e.target.files[0]" accept=".pdf,.jpg,.jpeg,.png" />
+            </div>
+          </div>
+
+          <div class="modal-footer mt-3">
             <button type="button" @click="modalNueva = false" class="btn-secondary">Cancelar</button>
-            <button type="submit" class="btn-primary" :disabled="loading">
-              {{ loading ? 'Enviando...' : 'Presentar Solicitud' }}
+            <button type="submit" class="btn-primary" :disabled="loading || materiasSeleccionadasForm.length === 0">
+              {{ loading ? 'Enviando...' : `Presentar Solicitud (${materiasSeleccionadasForm.length} materias)` }}
             </button>
           </div>
         </form>
@@ -295,7 +375,7 @@
 </template>
 
 <script setup>
-import { ref, onMounted } from 'vue';
+import { ref, onMounted, computed, watch } from 'vue';
 import { 
   Plus, 
   FileSearch, 
@@ -307,15 +387,43 @@ import {
   X, 
   BookOpen, 
   FolderArchive, 
-  ArrowRight 
+  ArrowRight,
+  Calendar,
+  Clock,
+  CheckCircle2,
+  Server,
+  Printer,
+  Trash2,
+  AlertCircle
 } from '@lucide/vue';
 import PagoQrModal from '../../components/pago/PagoQrModal.vue';
+import MallaCurricularDigital from '../../components/estudiante/MallaCurricularDigital.vue';
+import EtapasCronograma from '../../components/common/EtapasCronograma.vue';
 import api from '../../services/api';
+
+const props = defineProps({
+  usuario: Object
+});
 
 const solicitudes = ref([]);
 const periodos = ref([]);
 const materias = ref([]);
+const historicoAcademico = ref([]);
 const loading = ref(false);
+
+const historicoMap = computed(() => {
+  const map = {};
+  historicoAcademico.value.forEach(h => {
+    map[h.id_materia] = h;
+  });
+  return map;
+});
+
+const getCartaPdfUrl = (sol) => {
+  return `${api.defaults.baseURL || 'http://localhost:8000/api'}/solicitudes/${sol.id}/carta-pdf`;
+};
+
+const materiaSeleccionadaMalla = ref(null);
 
 const modalNueva = ref(false);
 const modalGrupo = ref(false);
@@ -329,46 +437,215 @@ const archivoRespaldoInicial = ref(null);
 const archivoRespaldo = ref(null);
 const archivoComprobante = ref(null);
 
-const formNueva = ref({ id_periodo: '', tipo_caso: 'LEVANTAMIENTO_PREREQUISITO', motivo: '', id_grupo: '' });
+const formNueva = ref({ id_periodo: '', tipo_caso: 'CASO_ESPECIAL', motivo: '', id_grupo: '' });
 const formGrupo = ref({ id_grupo: '', motivo: '' });
 const formRespaldo = ref({ tipo_archivo: 'RESPALDO' });
 
+const materiasSeleccionadasForm = ref([]);
+const grupoParaAgregar = ref('');
+
+const limiteMateriasCaso = computed(() => {
+  return periodoActivo.value?.max_materias_por_caso || 5;
+});
+
+const casoActivoTemporada = computed(() => {
+  const pId = periodoActivo.value?.id;
+  if (!pId) return null;
+  return solicitudes.value.find(s => s.id_periodo === pId && !['RECHAZADA_DIRECCION', 'RECHAZADA_CPD'].includes(s.estado)) || null;
+});
+
+const tieneCasoEnTemporada = computed(() => {
+  return !!casoActivoTemporada.value;
+});
+
+const totalCasosCarrera = computed(() => {
+  return solicitudes.value.filter(s => ['HABILITADA', 'APROBADA', 'APROBADA_DIRECCION', 'REMITIDA_A_CPD'].includes(s.estado)).length;
+});
+
+const limiteCarreraAlcanzado = computed(() => {
+  const maxCarrera = periodoActivo.value?.max_casos_carrera || 5;
+  return totalCasosCarrera.value >= maxCarrera;
+});
+
+const materiasDisponiblesParaAgregar = computed(() => {
+  const idsGruposElegidos = materiasSeleccionadasForm.value.map(m => m.id_grupo);
+  return materias.value.map(m => ({
+    ...m,
+    grupos: (m.grupos || []).filter(g => !idsGruposElegidos.includes(g.id))
+  })).filter(m => m.grupos.length > 0);
+});
+
+const getNombreMateriaPorGrupo = (idGrupo) => {
+  for (const m of materias.value) {
+    const g = (m.grupos || []).find(gr => gr.id === idGrupo);
+    if (g) return `${m.sigla} - ${m.nombre}`;
+  }
+  return 'Materia';
+};
+
+const getSiglaGrupo = (idGrupo) => {
+  for (const m of materias.value) {
+    const g = (m.grupos || []).find(gr => gr.id === idGrupo);
+    if (g) return g.sigla_grupo;
+  }
+  return 'SA';
+};
+
+const agregarMateriaAlForm = () => {
+  if (!grupoParaAgregar.value) return;
+  if (materiasSeleccionadasForm.value.length >= limiteMateriasCaso.value) {
+    alert(`Solo puedes solicitar hasta un máximo de ${limiteMateriasCaso.value} asignaturas.`);
+    return;
+  }
+  materiasSeleccionadasForm.value.push({
+    id_grupo: grupoParaAgregar.value,
+    motivo: 'Solicitud de inscripción por caso especial'
+  });
+  grupoParaAgregar.value = '';
+};
+
+const quitarMateriaForm = (idx) => {
+  materiasSeleccionadasForm.value.splice(idx, 1);
+};
+
+const formatearGestion = (gestion) => {
+  if (!gestion) return '';
+  // Convertir formato semestral 1-YYYY a I-YYYY o semestral estándar
+  const parts = gestion.split('-');
+  if (parts.length === 2) {
+    const sem = parts[0] === '1' ? 'I' : (parts[0] === '2' ? 'II' : parts[0]);
+    return `${sem}-${parts[1]} (${parts[0]}-${parts[1]})`;
+  }
+  return gestion;
+};
+
 const formatearFecha = (f) => f ? new Date(f).toLocaleString('es-BO') : 'N/A';
+
+const periodoActivo = computed(() => {
+  return periodos.value.find(p => p.estado === 'ACTIVO') || periodos.value[0] || null;
+});
+
+const formatearPeriodoRecepcion = () => {
+  const p = periodoActivo.value;
+  if (!p) return '23–24 Marzo';
+  if (p.fecha_inicio_solicitud && p.fecha_fin_solicitud) {
+    const f1 = new Date(p.fecha_inicio_solicitud + 'T00:00:00').toLocaleDateString('es-BO', { day: 'numeric', month: 'short' });
+    const f2 = new Date(p.fecha_fin_solicitud + 'T00:00:00').toLocaleDateString('es-BO', { day: 'numeric', month: 'short' });
+    return `${f1} al ${f2}`;
+  }
+  return '23 al 24 de Marzo';
+};
 
 const cargarDatos = async () => {
   try {
-    const [resS, resP, resM] = await Promise.all([
+    const carreraId = props.usuario?.estudiante?.carrera_id;
+    const materiasParams = carreraId ? { carrera_id: carreraId } : {};
+
+    const [resS, resP, resM, resH] = await Promise.all([
       api.get('/solicitudes/mis-casos'),
       api.get('/catalogos/periodos'),
-      api.get('/catalogos/materias')
+      api.get('/catalogos/materias', { params: materiasParams }),
+      api.get('/solicitudes/mi-historico')
     ]);
     solicitudes.value = resS.data;
     periodos.value = resP.data;
     materias.value = resM.data;
+    historicoAcademico.value = resH.data || [];
     if (periodos.value.length && !formNueva.value.id_periodo) {
       formNueva.value.id_periodo = periodos.value[0].id;
     }
   } catch (e) {
-    console.error(e);
+    console.error('Error al cargar datos del estudiante:', e);
+  }
+};
+
+watch(() => props.usuario?.estudiante?.carrera_id, (newVal) => {
+  if (newVal) {
+    cargarDatos();
+  }
+});
+
+const materiasSolicitadasActivas = computed(() => {
+  const ids = [];
+  solicitudes.value.forEach(s => {
+    if (s.grupos) {
+      s.grupos.forEach(g => {
+        if (g.grupo?.id_materia) ids.push(g.grupo.id_materia);
+      });
+    }
+  });
+  return ids;
+});
+
+const seleccionarMateriaDesdeMalla = (materia) => {
+  if (materiaSeleccionadaMalla.value?.id === materia.id) {
+    materiaSeleccionadaMalla.value = null;
+    return;
+  }
+  materiaSeleccionadaMalla.value = materia;
+  
+  if (tieneCasoEnTemporada.value) {
+    alert(`Ya tienes el caso ${casoActivoTemporada.value?.codigo} registrado en esta temporada.`);
+    return;
+  }
+
+  abrirModalRegistro();
+
+  // Si tiene grupos disponibles y no ha alcanzado límite, añadirlo automáticamente
+  if (materia.grupos && materia.grupos.length > 0) {
+    const gId = materia.grupos[0].id;
+    if (!materiasSeleccionadasForm.value.some(m => m.id_grupo === gId)) {
+      if (materiasSeleccionadasForm.value.length < limiteMateriasCaso.value) {
+        materiasSeleccionadasForm.value.push({
+          id_grupo: gId,
+          motivo: `Solicitud de levantamiento / caso especial para ${materia.sigla}`
+        });
+      }
+    }
   }
 };
 
 const abrirModalRegistro = () => {
+  if (tieneCasoEnTemporada.value) {
+    alert(`Solo se permite 1 caso especial por temporada. Ya tienes registrada la solicitud ${casoActivoTemporada.value?.codigo}.`);
+    return;
+  }
+  if (limiteCarreraAlcanzado.value) {
+    alert('Has alcanzado el límite institucional máximo de 5 casos especiales aprobados en toda tu carrera.');
+    return;
+  }
+
   if (periodos.value.length) formNueva.value.id_periodo = periodos.value[0].id;
   archivoRespaldoInicial.value = null;
+  materiasSeleccionadasForm.value = [];
+  grupoParaAgregar.value = '';
+  formNueva.value.motivo = '';
   modalNueva.value = true;
 };
 
 const guardarSolicitud = async () => {
+  if (materiasSeleccionadasForm.value.length === 0) {
+    alert('Debes agregar al menos 1 materia para solicitar el caso especial.');
+    return;
+  }
   loading.value = true;
   try {
     const fd = new FormData();
     fd.append('id_periodo', formNueva.value.id_periodo);
-    fd.append('tipo_caso', formNueva.value.tipo_caso);
+    fd.append('tipo_caso', 'CASO_ESPECIAL');
     fd.append('motivo', formNueva.value.motivo);
-    if (formNueva.value.id_grupo) {
-      fd.append('id_grupo', formNueva.value.id_grupo);
+
+    // Enviar materias en formato array JSON y primer grupo para compatibilidad
+    materiasSeleccionadasForm.value.forEach((mItem, index) => {
+      fd.append(`grupos[${index}][id_grupo]`, mItem.id_grupo);
+      fd.append(`grupos[${index}][motivo]`, mItem.motivo || '');
+    });
+
+    if (materiasSeleccionadasForm.value.length > 0) {
+      fd.append('id_grupo', materiasSeleccionadasForm.value[0].id_grupo);
+      fd.append('motivo_grupo', materiasSeleccionadasForm.value[0].motivo || '');
     }
+
     if (archivoRespaldoInicial.value) {
       fd.append('archivo_respaldo', archivoRespaldoInicial.value);
     }
@@ -380,8 +657,9 @@ const guardarSolicitud = async () => {
     modalNueva.value = false;
     formNueva.value.motivo = '';
     formNueva.value.id_grupo = '';
+    materiasSeleccionadasForm.value = [];
     archivoRespaldoInicial.value = null;
-    alert('Solicitud registrada exitosamente.');
+    alert('Solicitud de Caso Especial presentada exitosamente.');
     cargarDatos();
   } catch (e) {
     alert(e.response?.data?.error || 'Error al crear solicitud.');
@@ -485,6 +763,55 @@ onMounted(cargarDatos);
 </script>
 
 <style scoped>
+.schedule-banner {
+  background-color: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-xl, 16px);
+  padding: 1rem 1.4rem;
+  margin-bottom: 1.2rem;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 1rem;
+}
+.schedule-info {
+  display: flex;
+  align-items: center;
+  gap: 0.8rem;
+}
+.schedule-info h4 {
+  margin: 0;
+  font-size: 0.98rem;
+  font-weight: 700;
+  color: var(--text);
+}
+.schedule-desc {
+  font-size: 0.78rem;
+  color: var(--text-muted);
+}
+.phases-tags {
+  display: flex;
+  gap: 0.5rem;
+  flex-wrap: wrap;
+}
+.phase-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  padding: 0.35rem 0.75rem;
+  border-radius: var(--radius-pill, 100px);
+  font-size: 0.78rem;
+  background-color: var(--surface-alt);
+  border: 1px solid var(--border);
+  color: var(--text-muted);
+}
+.phase-pill.current {
+  background-color: var(--primary);
+  color: #ffffff;
+  border-color: var(--primary);
+}
+
 .role-view {
   background: white;
   border-radius: 12px;
@@ -581,6 +908,7 @@ onMounted(cargarDatos);
   gap: 0.3rem;
 }
 .btn-add { background: #eff6ff; color: #1e40af; border-color: #bfdbfe; }
+.btn-pdf { background: #fef2f2; color: #dc2626; border-color: #fecaca; text-decoration: none; }
 .btn-file { background: #f8fafc; color: #334155; }
 .btn-pay { background: #ecfdf5; color: #065f46; border-color: #a7f3d0; }
 .pay-actions-group {
@@ -608,8 +936,9 @@ onMounted(cargarDatos);
   display: flex;
   align-items: center;
   justify-content: center;
-  z-index: 100;
-  padding: 1rem;
+  z-index: 1000;
+  padding: 1.5rem;
+  overflow-y: auto;
 }
 .modal-box {
   background: white;
@@ -617,6 +946,18 @@ onMounted(cargarDatos);
   width: 100%;
   max-width: 520px;
   padding: 1.5rem;
+  box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04);
+}
+.modal-container-dialog {
+  max-height: 90vh;
+  display: flex;
+  flex-direction: column;
+}
+.modal-scrollable-form {
+  overflow-y: auto;
+  max-height: calc(90vh - 120px);
+  padding-right: 0.6rem;
+  padding-bottom: 0.5rem;
 }
 .modal-lg { max-width: 760px; }
 .modal-header {
@@ -655,6 +996,85 @@ onMounted(cargarDatos);
 .timeline { border-left: 2px solid #e2e8f0; padding-left: 1rem; margin-top: 1rem; }
 .timeline-item { position: relative; margin-bottom: 1rem; }
 .timeline-dot { position: absolute; left: -1.35rem; top: 0.2rem; width: 10px; height: 10px; background: #1e3a8a; border-radius: 50%; }
+.banner-aviso-info {
+  background: #eff6ff;
+  border: 1px solid #bfdbfe;
+  color: #1e40af;
+  padding: 0.8rem 1.2rem;
+  border-radius: 8px;
+  margin-bottom: 1.2rem;
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+  font-size: 0.9rem;
+}
+.banner-aviso-warn {
+  background: #fffbeb;
+  border: 1px solid #fde68a;
+  color: #92400e;
+  padding: 0.8rem 1.2rem;
+  border-radius: 8px;
+  margin-bottom: 1.2rem;
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+  font-size: 0.9rem;
+}
+.materias-builder-section {
+  background: #f8fafc;
+  border: 1px solid #e2e8f0;
+  border-radius: 8px;
+  padding: 1rem;
+  margin-bottom: 1rem;
+}
+.builder-header {
+  margin-bottom: 0.6rem;
+}
+.add-materia-row {
+  display: flex;
+  gap: 0.8rem;
+  align-items: center;
+}
+.col-select {
+  flex: 1;
+  margin-bottom: 0;
+}
+.btn-danger-action {
+  background: #fee2e2;
+  color: #b91c1c;
+  border: none;
+  padding: 0.35rem 0.6rem;
+  border-radius: 4px;
+  cursor: pointer;
+}
+.btn-danger-action:hover {
+  background: #fecaca;
+}
+.documentos-card-box {
+  background: #f8fafc;
+  border: 1px solid #cbd5e1;
+  border-radius: 8px;
+  padding: 1rem;
+}
+.documentos-card-box h4 {
+  margin: 0 0 0.3rem 0;
+  font-size: 0.95rem;
+}
+.text-sm {
+  font-size: 0.82rem;
+}
+.form-control-sm {
+  padding: 0.35rem 0.5rem;
+  font-size: 0.85rem;
+  border: 1px solid #cbd5e1;
+  border-radius: 4px;
+  width: 100%;
+}
+.modal-body-scroll {
+  max-height: 70vh;
+  overflow-y: auto;
+  padding-right: 0.5rem;
+}
 .mt-3 { margin-top: 1rem; }
 .mt-4 { margin-top: 1.5rem; }
 </style>

@@ -40,6 +40,8 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::post('/solicitudes/{id}/grupos', [SolicitudController::class, 'agregarGrupo']);
     Route::post('/solicitudes/{id}/archivos', [SolicitudController::class, 'adjuntarArchivo']);
     Route::get('/solicitudes/mis-casos', [SolicitudController::class, 'misCasos']);
+    Route::get('/solicitudes/mi-historico', [SolicitudController::class, 'miHistorico']);
+    Route::get('/solicitudes/{id}/carta-pdf', [SolicitudController::class, 'descargarCarta']);
     Route::get('/solicitudes', [SolicitudController::class, 'listar']);
     Route::get('/solicitudes/{id}', [SolicitudController::class, 'consultar']);
 
@@ -65,6 +67,7 @@ Route::middleware('auth:sanctum')->group(function () {
     // CU6: CPD
     Route::get('/cpd/pendientes', [CpdController::class, 'pendientes']);
     Route::post('/cpd/responder', [CpdController::class, 'responder']);
+    Route::put('/cpd/periodo/{id}/config', [CpdController::class, 'actualizarPeriodoConfig']);
 
     // CU7: Notificaciones del Usuario
     Route::get('/notificaciones', [NotificacionController::class, 'misNotificaciones']);

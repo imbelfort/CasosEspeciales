@@ -73,7 +73,8 @@ class PagoController extends Controller
             ]);
         }
 
-        $monto = (float) env('PAGOFACIL_COSTO_CASO_ESPECIAL', 15.00);
+        // Obtener arancel configurado en el periodo académico (por defecto 10.00 Bs oficial de la UAGRM)
+        $monto = (float) ($solicitud->periodo?->costo_arancel_caso ?? env('PAGOFACIL_COSTO_CASO_ESPECIAL', 10.00));
         $numeroPago = 'CASO-' . $solicitud->id . '-' . strtoupper(Str::random(6));
 
         $nombreCliente = trim(($user->nombre ?? '') . ' ' . ($user->apellidos ?? ''));
