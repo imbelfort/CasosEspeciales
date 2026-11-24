@@ -1,0 +1,55 @@
+﻿Semestre,Sigla,Materia,Tipo,Prerrequisitos
+1,MAT101,Cálculo 1,Obligatoria,Ninguno
+1,INF119,Estructuras Discretas,Obligatoria,Ninguno
+1,INF110,Introducción a la Informática,Obligatoria,Ninguno
+1,FIS100,Física 1,Obligatoria,Ninguno
+1,LIN100,Inglés Técnico 1,Obligatoria,Ninguno
+2,MAT102,Cálculo 2,Obligatoria,MAT101
+2,MAT103,Álgebra Lineal,Obligatoria,INF119
+2,INF120,Programación 1,Obligatoria,INF110
+2,FIS102,Física 2,Obligatoria,FIS100
+2,LIN101,Inglés Técnico 2,Obligatoria,Ninguno
+3,MAT207,Ecuaciones Diferenciales,Obligatoria,MAT102
+3,INF210,Programación 2,Obligatoria,"MAT103, INF120"
+3,INF211,Arquitectura de Computadoras,Obligatoria,"INF120, FIS102"
+3,RDS210,Análisis de Circuitos,Obligatoria,FIS102
+3,ELT241,Teoría de Campos,Obligatoria,FIS102
+4,MAT202,Probabilidad y Estadística 1,Obligatoria,MAT102
+4,MAT205,Métodos Numéricos,Obligatoria,MAT207
+4,INF220,Estructuras de Datos 1,Obligatoria,"INF210, MAT101"
+4,INF221,Programación Ensamblador,Obligatoria,INF211
+4,RDS220,Análisis Circuitos Electrónicos,Obligatoria,RDS210
+5,MAT302,Probabilidad y Estadística 2,Obligatoria,MAT202
+5,INF312,Base de Datos 1,Obligatoria,INF220
+5,RDS310,Electrónica Aplicada a Redes,Obligatoria,RDS220
+5,ELT352,Sistemas Lógicos Digitales 1,Obligatoria,RDS220
+5,ELT354,Señales y Sistemas,Obligatoria,MAT207
+5,ELC201,Diseño de Circuitos Integrados,Electiva,Regla en construcción
+5,ELC202,Instrumentación,Electiva,Regla en construcción
+6,MAT329,Investigación Operativa 1,Obligatoria,MAT302
+6,INF322,Base de Datos 2,Obligatoria,INF312
+6,INF323,Sistemas Operativos 1,Obligatoria,RDS310
+6,ELT362,Sistemas Lógicos Digitales 2,Obligatoria,ELT352
+6,RDS320,Interpretación de Sistemas y Señales,Obligatoria,"RDS310, MAT205"
+6,ELC203,Sistemas de Comunicación SCADA,Electiva,Regla en construcción
+6,ELC204,Televisión Digital,Electiva,Regla en construcción
+7,MAT419,Investigación Operativa 2,Obligatoria,MAT329
+7,INF413,Sistemas Operativos 2,Obligatoria,INF323
+7,INF433,Redes 1,Obligatoria,"INF323, ELT354"
+7,RDS410,Aplicaciones con Microprocesadores,Obligatoria,"ELT362, INF221"
+7,ELT374,Sistemas de Comunicación 1,Obligatoria,"ELT354, RDS320"
+7,ELC205,Domótica,Electiva,Regla en construcción
+7,ELC206,Líneas de Transmisión y Antenas,Electiva,Regla en construcción
+8,ECO449,Preparación y Evaluación de Proyectos,Obligatoria,MAT419
+8,INF423,Redes 2,Obligatoria,INF433
+8,RDS421,Taller de An. y Diseño de Redes,Obligatoria,INF433
+8,RDS429,Legislación en Redes y Comunicaciones,Obligatoria,"INF433, ELT374"
+8,ELT384,Sistemas de Comunicación 2,Obligatoria,ELT374
+8,ELC207,Técnicas de Presentación para Ingeniería,Electiva,Regla en construcción
+8,ELC208,Redes Adhoc,Electiva,Regla en construcción
+9,INF511,Taller de Grado 1,Obligatoria,"ECO449, RDS421, INF423, ELT384, RDS429"
+9,ING513,Tecnología Web,Obligatoria,"ECO449, RDS421, INF423, ELT384, RDS429"
+9,RDS511,Gestión y Adm. de Redes,Obligatoria,"ECO449, RDS421, INF423, ELT384, RDS429"
+9,RDS512,Redes Inalámbricas y Comunicaciones,Obligatoria,"ECO449, RDS421, INF423, ELT384, RDS429"
+9,RDS519,Seguridad en Redes y Transmisión de Datos,Obligatoria,"ECO449, RDS421, INF423, ELT384, RDS429"
+10,GRL001,Modalidad de Titulación Licenciatura,Obligatoria,"INF511, ING513, RDS511, RDS512, RDS519"

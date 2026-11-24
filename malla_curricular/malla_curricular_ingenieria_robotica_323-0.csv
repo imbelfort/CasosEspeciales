@@ -1,0 +1,49 @@
+﻿Semestre,Sigla,Materia,Tipo,Prerrequisitos
+1,MAT101,Cálculo I,Obligatoria,Ninguno
+1,FIS100,Física I,Obligatoria,Ninguno
+1,INF110,Introducción a la Programación,Obligatoria,Ninguno
+1,ROB101,Introducción a la Robótica,Obligatoria,Ninguno
+1,ROB102,Dibujo Mecánico en CAD,Obligatoria,Ninguno
+1,MET100,Metodología de la Investigación,Obligatoria,Ninguno
+2,MAT102,Cálculo II,Obligatoria,MAT101
+2,FIS200,Física II,Obligatoria,"FIS100, MAT101"
+2,INF120,Programación I,Obligatoria,INF110
+2,ROB103,Estática,Obligatoria,ROB101
+2,MAT202,Probabilidades y Estadísticas I,Obligatoria,MET100
+2,ROB104,Pensamiento Crítico y Creativo,Obligatoria,MET100
+3,MAT207,Ecuaciones Diferenciales,Obligatoria,MAT102
+3,ROB201,Electricidad y Magnetismo,Obligatoria,FIS200
+3,RDS210,Análisis de Circuitos,Obligatoria,FIS200
+3,ROB203,Dinámica,Obligatoria,ROB103
+3,ROB202,Tecnologías de la Manufactura,Obligatoria,ROB102
+3,MAT103,Álgebra Lineal,Obligatoria,INF120
+4,MAT205,Métodos Numéricos,Obligatoria,MAT207
+4,ELT352,Circuitos Electrónicos I,Obligatoria,ROB201
+4,INF220,Estructura de Datos,Obligatoria,INF120
+4,ROB204,Circuitos Digitales,Obligatoria,RDS210
+4,INF433,Redes I,Obligatoria,ROB201
+4,ELT354,Señales y Sistemas,Obligatoria,MAT103
+5,INF418,Inteligencia Artificial,Obligatoria,"MAT205, MAT202"
+5,ELT362,Circuitos Electrónicos II,Obligatoria,ELT352
+5,ROB303,Sistemas Embebidos,Obligatoria,INF220
+5,ROB301,Sistemas de Control I,Obligatoria,ROB204
+5,ROB302,Actuadores y Sensores,Obligatoria,INF433
+5,RDS320,Procesamiento Digital de Señales,Obligatoria,ELT354
+6,ROB307,Visión Computacional,Obligatoria,INF418
+6,ROB304,Robótica Industrial,Obligatoria,"ELT362, ROB203"
+6,ROB306,Internet de las Cosas,Obligatoria,ROB303
+6,ROB305,Taller de Control,Obligatoria,"ROB301, ROB303"
+6,ELC202,Instrumentación Industrial,Obligatoria,"ROB302, ROB202"
+6,MET200,"Liderazgo, Emprendimiento y Startups",Obligatoria,ROB104
+7,ROB405,Interacción Humano-Robot,Obligatoria,ROB307
+7,ROB401,Robótica Avanzada,Obligatoria,ROB304
+7,ROB404,Robot Operating System,Obligatoria,ROB306
+7,ROB403,Sistemas de Control II,Obligatoria,"ROB305, RDS320"
+7,ROB402,Automatización y Control,Obligatoria,ELC202
+7,ELECTIVA_7,Electiva,Electiva,Regla en construcción
+8,INF511,Taller de Grado I,Obligatoria,ROB405
+8,ROB406,Taller de Robótica y Sistemas Inteligentes,Obligatoria,"ROB401, ROB402"
+8,ECO449,Preparación y Evaluación de Proyectos,Obligatoria,ROB404
+8,PRA001,Práctica Profesional,Obligatoria,"ROB403, ROB402, ROB401, ROB404, ROB405"
+8,ELECTIVA_8,Electiva,Electiva,Regla en construcción
+9,GRL001,Modalidad de Titulación,Obligatoria,"INF511, ROB406, ECO449, PRA001"

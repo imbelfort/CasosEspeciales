@@ -47,10 +47,15 @@
                 <Paperclip :size="14" class="inline-icon" /> Respaldo
               </button>
 
-              <!-- Adjuntar Comprobante de Pago cuando Dirección aprueba el caso (CU5) -->
-              <button v-if="sol.estado === 'APROBADA_DIRECCION'" @click="abrirPago(sol)" class="btn-action btn-pay">
-                <CreditCard :size="14" class="inline-icon" /> Adjuntar Pago
-              </button>
+              <!-- Módulo de Cobros: Pagar por QR PagoFácil o Adjuntar Comprobante (CU5) -->
+              <div v-if="sol.estado === 'APROBADA_DIRECCION'" class="pay-actions-group">
+                <button @click="abrirPagoQr(sol)" class="btn-action btn-pay-qr" title="Pagar arancel inmediatamente con QR bancario">
+                  <QrCode :size="14" class="inline-icon" /> Pagar con QR
+                </button>
+                <button @click="abrirPago(sol)" class="btn-action btn-pay" title="Subir boleta física de depósito">
+                  <UploadCloud :size="14" class="inline-icon" /> Subir Boleta
+                </button>
+              </div>
             </td>
           </tr>
           <tr v-if="solicitudes.length === 0">
@@ -213,6 +218,14 @@
       </div>
     </div>
 
+    <!-- MODAL INTEGRADO PAGOFÁCIL QR -->
+    <PagoQrModal 
+      :visible="modalPagoQr" 
+      :solicitud="solicitudActiva" 
+      @close="modalPagoQr = false" 
+      @pago-completado="onPagoQrCompletado" 
+    />
+
     <!-- MODAL DETALLE / EXPEDIENTE COMPLETO (CU7) -->
     <div v-if="modalDetalle && solicitudActiva" class="modal-backdrop">
       <div class="modal-box modal-lg">
@@ -289,11 +302,14 @@ import {
   BookPlus, 
   Paperclip, 
   CreditCard, 
+  QrCode,
+  UploadCloud,
   X, 
   BookOpen, 
   FolderArchive, 
   ArrowRight 
 } from '@lucide/vue';
+import PagoQrModal from '../../components/pago/PagoQrModal.vue';
 import api from '../../services/api';
 
 const solicitudes = ref([]);
@@ -305,6 +321,7 @@ const modalNueva = ref(false);
 const modalGrupo = ref(false);
 const modalRespaldo = ref(false);
 const modalPago = ref(false);
+const modalPagoQr = ref(false);
 const modalDetalle = ref(false);
 const solicitudActiva = ref(null);
 
@@ -428,6 +445,15 @@ const subirRespaldo = async () => {
   } finally {
     loading.value = false;
   }
+};
+
+const abrirPagoQr = (sol) => {
+  solicitudActiva.value = sol;
+  modalPagoQr.value = true;
+};
+
+const onPagoQrCompletado = (pago) => {
+  cargarDatos();
 };
 
 const abrirPago = (sol) => {
@@ -557,6 +583,19 @@ onMounted(cargarDatos);
 .btn-add { background: #eff6ff; color: #1e40af; border-color: #bfdbfe; }
 .btn-file { background: #f8fafc; color: #334155; }
 .btn-pay { background: #ecfdf5; color: #065f46; border-color: #a7f3d0; }
+.pay-actions-group {
+  display: flex;
+  gap: 0.35rem;
+  flex-wrap: wrap;
+}
+.btn-pay-qr {
+  background: var(--accent, #7c3aed);
+  color: #ffffff;
+  border-color: transparent;
+}
+.btn-pay-qr:hover {
+  filter: brightness(1.1);
+}
 .no-records {
   text-align: center;
   padding: 2rem;

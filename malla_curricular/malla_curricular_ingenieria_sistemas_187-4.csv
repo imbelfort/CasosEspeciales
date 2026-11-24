@@ -1,0 +1,54 @@
+﻿Semestre,Sigla,Materia,Tipo,Prerrequisitos
+1,MAT101,Cálculo 1,Obligatoria,Ninguno
+1,INF110,Introducción a la Informática,Obligatoria,Ninguno
+1,INF119,Estructuras Discretas,Obligatoria,Ninguno
+1,FIS100,Física 1,Obligatoria,Ninguno
+1,LIN100,Inglés Técnico 1,Obligatoria,Ninguno
+2,MAT102,Cálculo 2,Obligatoria,MAT101
+2,INF120,Programación 1,Obligatoria,INF110
+2,MAT103,Álgebra Lineal,Obligatoria,INF119
+2,FIS102,Física 2,Obligatoria,FIS100
+2,LIN101,Inglés Técnico 2,Obligatoria,LIN100
+3,MAT207,Ecuaciones Diferenciales,Obligatoria,MAT102
+3,INF210,Programación 2,Obligatoria,"MAT103, INF120"
+3,INF211,Arquitectura de Computadoras,Obligatoria,"INF120, FIS102"
+3,FIS200,Física 3,Obligatoria,FIS102
+3,ADM100,Administración,Obligatoria,Ninguno
+4,MAT202,Probabilidad y Estadística 1,Obligatoria,MAT102
+4,MAT205,Métodos Numéricos,Obligatoria,MAT207
+4,INF220,Estructuras de Datos 1,Obligatoria,INF210
+4,INF221,Programación Ensamblador,Obligatoria,INF211
+4,ADM200,Contabilidad,Obligatoria,ADM100
+5,MAT302,Probabilidad y Estadística 2,Obligatoria,MAT202
+5,INF310,Estructuras de Datos 2,Obligatoria,INF220
+5,INF312,Base de Datos 1,Obligatoria,INF220
+5,ECO300,Economía para la Gestión,Obligatoria,ADM200
+5,ADM330,Organización y Métodos,Obligatoria,ADM200
+5,ELC001,Administración de Recursos Humanos,Electiva,Regla en construcción
+5,ELC002,Costos y Presupuestos,Electiva,Regla en construcción
+6,MAT329,Investigación Operativa 1,Obligatoria,MAT302
+6,INF323,Sistemas Operativos 1,Obligatoria,INF310
+6,INF322,Base de Datos 2,Obligatoria,INF312
+6,INF342,Sistemas de Información 1,Obligatoria,INF312
+6,ADM320,Finanzas para la Empresa,Obligatoria,ADM330
+6,ELC003,Producción y Marketing,Electiva,Regla en construcción
+6,ELC004,Reingeniería,Electiva,Regla en construcción
+7,MAT419,Investigación Operativa 2,Obligatoria,MAT329
+7,INF433,Redes 1,Obligatoria,INF323
+7,INF413,Sistemas Operativos 2,Obligatoria,INF323
+7,INF412,Sistemas de Información 2,Obligatoria,"INF342, INF322"
+7,INF432,Soporte para la Toma de Decisiones,Obligatoria,"INF342, ADM320"
+7,ELC005,Ingeniería de la Calidad,Electiva,Regla en construcción
+7,ELC006,Benchmarking,Electiva,Regla en construcción
+8,ECO449,Preparación y Evaluación de Proyectos,Obligatoria,MAT419
+8,INF423,Redes 2,Obligatoria,INF433
+8,INF442,Sistemas de Información Geográfica,Obligatoria,INF412
+8,INF422,Ingeniería de Software 1,Obligatoria,INF412
+8,INF462,Auditoría Informática,Obligatoria,INF412
+8,ELC007,Macroeconomía,Electiva,Regla en construcción
+8,ELC008,Legislación en Cs. de la Computación,Electiva,Regla en construcción
+9,INF511,Taller de Grado 1,Obligatoria,"ECO449, INF422, INF462, INF423, INF442"
+9,ING512,Ingeniería de Software 2,Obligatoria,"ECO449, INF422, INF462, INF423, INF442"
+9,INF513,Tecnología Web,Obligatoria,"ECO449, INF422, INF462, INF423, INF442"
+9,INF552,Arquitectura de Software,Obligatoria,"ECO449, INF422, INF462, INF423, INF442"
+10,GRL001,Modalidad de Titulación Licenciatura,Obligatoria,"INF511, ING512, INF513, INF552"

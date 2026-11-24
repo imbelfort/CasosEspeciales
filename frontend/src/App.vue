@@ -2,7 +2,7 @@
   <div class="app-container">
     <Navbar :usuario="usuario" @logout="onLogout" />
     
-    <!-- Barra de Navegación Estricta por Rol (RBAC de base_datos_actual.md) -->
+    <!-- Barra de Navegación Estricta por Rol (RBAC de base_datos_actual.md) + Contador Global Reutilizable -->
     <div v-if="usuario" class="role-nav-bar">
       <div class="nav-links">
         <!-- VISTAS DEL ESTUDIANTE -->
@@ -39,6 +39,16 @@
           </router-link>
         </template>
       </div>
+
+      <!-- Componente Reutilizable: Contador de Visitas por Vista -->
+      <div class="nav-counter">
+        <ViewCounter />
+      </div>
+    </div>
+
+    <!-- Si no hay usuario logueado (p. ej. pantalla login), también se muestra el contador reutilizable -->
+    <div v-else class="public-counter-bar">
+      <ViewCounter />
     </div>
 
     <main class="content-wrapper">
@@ -59,6 +69,7 @@ import {
   BarChart3 
 } from '@lucide/vue';
 import Navbar from './components/layout/Navbar.vue';
+import ViewCounter from './components/common/ViewCounter.vue';
 import api from './services/api';
 
 const route = useRoute();
@@ -114,44 +125,68 @@ onMounted(async () => {
   min-height: 100vh;
   display: flex;
   flex-direction: column;
+  background-color: var(--bg);
+  color: var(--text);
+  transition: background-color 0.25s ease, color 0.25s ease;
 }
 .role-nav-bar {
-  background: white;
-  border-bottom: 1px solid #e2e8f0;
-  padding: 0.5rem 2rem;
+  background: var(--surface);
+  border-bottom: 1px solid var(--border);
+  padding: 0.45rem 1.8rem;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 0.8rem;
 }
 .nav-links {
   display: flex;
-  gap: 0.8rem;
-  max-width: 1280px;
-  margin: 0 auto;
+  gap: 0.4rem;
+  flex-wrap: wrap;
 }
 .nav-link {
   display: flex;
   align-items: center;
   gap: 0.4rem;
-  padding: 0.5rem 1rem;
+  padding: 0.45rem 0.95rem;
   text-decoration: none;
-  color: #475569;
+  color: var(--text-muted);
   font-weight: 600;
-  border-radius: 6px;
-  transition: all 0.2s;
-  font-size: 0.9rem;
+  border-radius: var(--radius-pill, 100px);
+  transition: all 0.15s ease;
+  font-size: 0.88rem;
+  border: 1px solid transparent;
+}
+.nav-link:hover {
+  background: var(--surface-alt);
+  color: var(--text);
 }
 .nav-link.router-link-active, .nav-link.active {
-  background: #1e3a8a;
-  color: white;
+  background: var(--primary);
+  color: #ffffff;
 }
 .nav-icon {
   flex-shrink: 0;
 }
 .badge-count {
-  background: #ef4444;
-  color: white;
+  background: var(--danger);
+  color: #ffffff;
   font-size: 0.7rem;
   padding: 0.1rem 0.4rem;
   border-radius: 10px;
   font-weight: bold;
+}
+.nav-counter {
+  display: flex;
+  align-items: center;
+}
+.public-counter-bar {
+  display: flex;
+  justify-content: flex-end;
+  padding: 0.5rem 1.8rem 0;
+  max-width: 1280px;
+  margin: 0 auto;
+  width: 100%;
 }
 .content-wrapper {
   flex: 1;

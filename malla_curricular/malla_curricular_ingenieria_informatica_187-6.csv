@@ -1,0 +1,54 @@
+﻿Semestre,Sigla,Materia,Tipo,Prerrequisitos
+1,MAT101,Cálculo I,Obligatoria,Ninguno
+1,INF119,Estructuras Discretas,Obligatoria,Ninguno
+1,FIS100,Física I,Obligatoria,Ninguno
+1,INF110,Introducción a la Programación,Obligatoria,Ninguno
+1,INF111,Arquitectura de Computadoras,Obligatoria,Ninguno
+1,MET100,Metodología de la Investigación,Obligatoria,Ninguno
+2,MAT102,Cálculo II,Obligatoria,MAT101
+2,MAT103,Álgebra Lineal,Obligatoria,INF119
+2,INF120,Programación I,Obligatoria,INF110
+2,FIS102,Física II,Obligatoria,FIS100
+2,INF112,Base de Datos I,Obligatoria,INF110
+2,INF123,Sistemas Operativos I,Obligatoria,INF111
+3,MAT207,Ecuaciones Diferenciales,Obligatoria,MAT102
+3,INF219,Ing. de Requisitos y Modelado,Obligatoria,INF112
+3,INF210,Programación II,Obligatoria,"INF120, MAT103"
+3,INF212,Base de Datos II,Obligatoria,INF112
+3,INF225,Redes I,Obligatoria,"INF123, INF112"
+3,INF223,Sistemas Operativos II,Obligatoria,INF123
+4,MAT202,Probabilidades y Estadísticas I,Obligatoria,MAT102
+4,MAT205,Métodos Numéricos,Obligatoria,MAT207
+4,INF252,Arquitectura de Software,Obligatoria,INF219
+4,INF220,Estructura de Datos I,Obligatoria,INF210
+4,INF240,Programación Web I,Obligatoria,INF212
+4,INF226,Redes II,Obligatoria,INF225
+5,MAT302,Probabilidades y Estadísticas II,Obligatoria,MAT202
+5,INF342,Taller de Sistemas,Obligatoria,INF252
+5,INF311,Herramientas de Desarrollo de Software,Obligatoria,INF252
+5,INF318,Prog. Lógica y Funcional,Obligatoria,INF220
+5,INF340,Prog. Web II,Obligatoria,INF240
+5,INF307,Criptografía,Obligatoria,INF210
+5,INF310,Estructuras de Datos II,Obligatoria,INF220
+6,MAT329,Investigación Operativa I,Obligatoria,"MAT302, INF342"
+6,INF320,Gestión de Conf. Del Software,Obligatoria,"INF342, INF311"
+6,INF321,Inteligencia Artificial,Obligatoria,"INF310, INF318"
+6,INF341,Prog. Móvil,Obligatoria,INF340
+6,INF350,Seguridad en Redes,Obligatoria,INF226
+6,INF351,Sist. De Inf. Geográfica,Obligatoria,INF342
+6,INF308,Legislación Informática y Ética,Obligatoria,MET100
+7,MAT419,Investigación Operativa II,Obligatoria,MAT329
+7,INF422,Ingeniería de Software I,Obligatoria,INF342
+7,INF401,Optimización de Desarrollo de Aplicaciones,Obligatoria,INF320
+7,INF432,Gestión de Infraestructura TI,Obligatoria,INF350
+7,INF461,Machine Learning,Obligatoria,INF321
+7,INF404,Computación en la Nube,Obligatoria,INF341
+7,INF406,"Liderazgo, Emprendimiento y Startup",Obligatoria,INF308
+8,INF411,Taller de Grado I,Obligatoria,INF422
+8,INF423,Ingeniería de Software II,Obligatoria,INF422
+8,INF407,Testing y Calidad del Software,Obligatoria,INF401
+8,INF408,Interacción Hombre-Computador,Obligatoria,INF432
+8,INF452,Gestión de la Seguridad de la Informac.,Obligatoria,INF350
+8,ECO449,Preparación y Evaluación de Proyectos,Obligatoria,"MAT302, INF406"
+9,INF512,Prácticas Profesionales,Obligatoria,"INF411, INF423, INF407, INF408, INF452, ECO449"
+9,GRL001 / GDI001,Modalidad de Graduación,Obligatoria,"INF411, INF423, INF407, INF408, INF452, ECO449"

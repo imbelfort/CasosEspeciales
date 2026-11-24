@@ -1,313 +1,398 @@
+/* ============================================================
+   SISTEMA DE DISEÑO PLANO META / FACEBOOK (DESIGN-meta.md)
+   Sistema de Casos Especiales - FICCT UAGRM
+   - Diseño plano tipo Facebook / Meta (sin sombras excesivas, bordes de 1px hairline)
+   - Pill buttons (100px), tarjetas limpias con esquinas redondeadas
+   - Soporte total para 3 Temas: Jóvenes (Cobalt/FB Blue), Niños (Cálido Amigable), Adultos (Ink Deep / Sobrio)
+   - Modo Oscuro plano de alto contraste y legibilidad impecable
+   - Cero emojis: 100% iconos vectoriales Lucide
+   ============================================================ */
+
 * {
   box-sizing: border-box;
 }
 
+/* Base de Tipografía limpia y moderna inspirada en Optimistic VF / Inter / Helvetica */
+body {
+  margin: 0;
+  padding: 0;
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  background-color: var(--bg);
+  color: var(--text);
+  line-height: 1.5;
+  letter-spacing: -0.14px;
+  transition: background-color 0.2s ease, color 0.2s ease;
+}
+
 /* ============================================================
-   1. TEMA 1: INSTITUCIONAL (AZUL FICCT / UAGRM)
+   1. TEMA JOVENES (DEFAULT: FACEBOOK / META COBALT #0064E0 & #1876F2)
    ============================================================ */
 :root,
-[data-theme="institucional"] {
-  --primary: #1e3a8a;
-  --primary-hover: #172554;
-  --primary-subtle: #dbeafe;
-  --primary-text: #1e40af;
-  --secondary: #0284c7;
-  --accent: #2563eb;
-  --danger: #dc2626;
-  --success: #16a34a;
-  --warning: #d97706;
+[data-theme="jovenes"] {
+  /* Tokens de Color Primarios y Acentos según DESIGN-meta.md */
+  --primary: #0064e0;            /* Cobalt Primary (Meta Buy-now / Acción Principal) */
+  --primary-hover: #0457cb;      /* Primary Deep */
+  --primary-subtle: #e7f3ff;     /* Soft Cobalt Tint */
+  --primary-text: #0064e0;
+  
+  --secondary: #1876f2;          /* Facebook Blue */
+  --secondary-hover: #166fe5;
+  --accent: #1876f2;
+  
+  --ink-button: #000000;         /* Marketing button black */
+  --ink-button-text: #ffffff;
+  
+  --danger: #e41e3f;             /* Meta Critical */
+  --danger-hover: #f0284a;       /* Critical Strong */
+  --success: #31a24c;            /* Meta Success */
+  --warning: #f7b928;            /* Meta Warning */
+  --attention: #f2a918;          /* Meta Attention */
 
-  /* Superficies y Fondos Modo Claro */
-  --bg: #f8fafc;
-  --surface: #ffffff;
-  --surface-alt: #f1f5f9;
-  --text: #0f172a;
-  --text-muted: #64748b;
-  --border: #cbd5e1;
-  --border-focus: #1e3a8a;
-  --shadow-color: rgba(15, 23, 42, 0.08);
+  /* Superficies Planas estilo Facebook */
+  --bg: #f0f2f5;                 /* Canvas fondo tradicional de Facebook */
+  --surface: #ffffff;            /* Tarjetas y contenedores blancos */
+  --surface-alt: #f1f4f7;        /* Soft Cloud / surface-soft */
+  --text: #1c1e21;               /* Ink principal */
+  --text-muted: #65676b;         /* Steel / Charcoal */
+  --border: #ced0d4;             /* Hairline gray (1px limpio) */
+  --border-focus: #1876f2;       /* Focus FB Blue */
+  --shadow-color: rgba(0, 0, 0, 0.04); /* Sombra casi imperceptible, totalmente plana */
+
+  /* Radio de bordes Meta */
+  --radius-xs: 2px;
+  --radius-sm: 4px;
+  --radius-md: 6px;
+  --radius-lg: 8px;
+  --radius-xl: 16px;
+  --radius-xxl: 24px;
+  --radius-pill: 100px;
+  --radius-circle: 50%;
 
   --font-scale: 1;
 }
 
 /* ============================================================
-   2. TEMA 2: ESMERALDA ACADÉMICO (VERDE)
+   2. TEMA NIÑOS (CÁLIDO, DINÁMICO, AMIGABLE - ÁMBAR / MANDARINA)
    ============================================================ */
-[data-theme="esmeralda"] {
-  --primary: #065f46;
-  --primary-hover: #064e3b;
-  --primary-subtle: #d1fae5;
-  --primary-text: #065f46;
-  --secondary: #0d9488;
-  --accent: #059669;
-  --border-focus: #059669;
+[data-theme="ninos"] {
+  --primary: #f27405;
+  --primary-hover: #d95e00;
+  --primary-subtle: #fff3e6;
+  --primary-text: #b34a00;
+
+  --secondary: #f7b928;
+  --secondary-hover: #e0a316;
+  --accent: #f27405;
+
+  --ink-button: #3d2300;
+  --ink-button-text: #ffffff;
+
+  --danger: #e41e3f;
+  --danger-hover: #c91432;
+  --success: #2bb04c;
+  --warning: #f7b928;
+  --attention: #f27405;
+
+  --bg: #fcf9f2;
+  --surface: #ffffff;
+  --surface-alt: #f8f1e5;
+  --text: #2c1a04;
+  --text-muted: #735432;
+  --border: #e8d9c2;
+  --border-focus: #f27405;
+  --shadow-color: rgba(242, 116, 5, 0.05);
+
+  --radius-xs: 4px;
+  --radius-sm: 8px;
+  --radius-md: 10px;
+  --radius-lg: 14px;
+  --radius-xl: 20px;
+  --radius-xxl: 28px;
+  --radius-pill: 100px;
 }
 
 /* ============================================================
-   3. TEMA 3: PÚRPURA TECNOLÓGICO (VIOLETA)
+   3. TEMA ADULTOS (SOBRIO, INSTITUCIONAL - INK DEEP / SLATE)
    ============================================================ */
-[data-theme="purpura"] {
-  --primary: #581c87;
-  --primary-hover: #3b0764;
-  --primary-subtle: #ede9fe;
-  --primary-text: #581c87;
-  --secondary: #7c3aed;
-  --accent: #9333ea;
-  --border-focus: #9333ea;
+[data-theme="adultos"] {
+  --primary: #0a1317;            /* Ink Deep de Meta */
+  --primary-hover: #1c1e21;
+  --primary-subtle: #dee3e9;
+  --primary-text: #0a1317;
+
+  --secondary: #444950;          /* Charcoal */
+  --secondary-hover: #31353b;
+  --accent: #0064e0;
+
+  --ink-button: #0a1317;
+  --ink-button-text: #ffffff;
+
+  --danger: #d92d20;
+  --danger-hover: #b42318;
+  --success: #039855;
+  --warning: #dc6803;
+  --attention: #b54708;
+
+  --bg: #f8f9fa;
+  --surface: #ffffff;
+  --surface-alt: #f1f3f5;
+  --text: #0a1317;
+  --text-muted: #5d6c7b;
+  --border: #ced0d4;
+  --border-focus: #0a1317;
+  --shadow-color: rgba(10, 19, 23, 0.05);
+
+  --radius-xs: 2px;
+  --radius-sm: 4px;
+  --radius-md: 6px;
+  --radius-lg: 6px;
+  --radius-xl: 10px;
+  --radius-xxl: 14px;
+  --radius-pill: 100px;
 }
 
 /* ============================================================
-   4. MODO OSCURO GLOBAL COMPLETO (DARK MODE)
+   4. MODO OSCURO PLANO ESTILO FACEBOOK / META (DARK THEME)
    ============================================================ */
 [data-mode="dark"],
 .dark {
-  --bg: #090d16;
-  --surface: #111827;
-  --surface-alt: #1a2234;
-  --text: #f9fafb;
-  --text-muted: #9ca3af;
-  --border: #2e384d;
-  --shadow-color: rgba(0, 0, 0, 0.6);
+  --bg: #18191a;                 /* Fondo oscuro plano oficial de Facebook */
+  --surface: #242526;            /* Tarjetas elevadas de Facebook Dark */
+  --surface-alt: #3a3b3c;        /* Botones secundarios y campos de entrada */
+  --text: #e4e6eb;               /* Texto principal blanco suave */
+  --text-muted: #b0b3b8;         /* Texto secundario gris */
+  --border: #393a3b;             /* Divisores sutiles planos */
+  --border-focus: #2d88ff;       /* Azul brillante para foco */
+  --shadow-color: rgba(0, 0, 0, 0.3);
+
+  --ink-button: #ffffff;
+  --ink-button-text: #18191a;
 }
 
-/* Adaptación de Botones y Acentos en Modo Oscuro según el Tema */
-[data-mode="dark"][data-theme="institucional"],
-.dark[data-theme="institucional"] {
-  --primary: #3b82f6;
-  --primary-hover: #2563eb;
-  --primary-subtle: #1e3a8a;
-  --primary-text: #93c5fd;
-  --border-focus: #60a5fa;
+/* Variación Modo Oscuro Jóvenes (Facebook Blue Neón) */
+[data-mode="dark"][data-theme="jovenes"],
+.dark[data-theme="jovenes"] {
+  --primary: #2d88ff;            /* Facebook Blue en modo noche */
+  --primary-hover: #4599ff;
+  --primary-subtle: rgba(45, 136, 255, 0.2);
+  --primary-text: #70b4ff;
+  --secondary: #3a3b3c;
+  --accent: #2d88ff;
+  --border-focus: #2d88ff;
 }
 
-[data-mode="dark"][data-theme="esmeralda"],
-.dark[data-theme="esmeralda"] {
-  --primary: #10b981;
-  --primary-hover: #059669;
-  --primary-subtle: #064e3b;
-  --primary-text: #a7f3d0;
-  --border-focus: #34d399;
+/* Variación Modo Oscuro Niños (Ámbar Nocturno Suave) */
+[data-mode="dark"][data-theme="ninos"],
+.dark[data-theme="ninos"] {
+  --bg: #1a1612;
+  --surface: #28211a;
+  --surface-alt: #3d3227;
+  --primary: #f28b26;
+  --primary-hover: #f7a049;
+  --primary-subtle: rgba(242, 139, 38, 0.22);
+  --primary-text: #ffbd7a;
+  --border: #44372a;
+  --border-focus: #f28b26;
 }
 
-[data-mode="dark"][data-theme="purpura"],
-.dark[data-theme="purpura"] {
-  --primary: #a855f7;
-  --primary-hover: #9333ea;
-  --primary-subtle: #581c87;
-  --primary-text: #e9d5ff;
-  --border-focus: #c084fc;
-}
-
-/* ============================================================
-   5. APLICACIÓN GLOBAL A LA ESTRUCTURA Y TEXTOS
-   ============================================================ */
-html {
-  font-size: 16px;
-  transition: background-color 0.25s ease, color 0.25s ease;
-  background-color: var(--bg);
-  color: var(--text);
-}
-
-body {
-  margin: 0;
-  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
-  background-color: var(--bg);
-  color: var(--text);
-  font-size: calc(1rem * var(--font-scale, 1));
-  -webkit-font-smoothing: antialiased;
-}
-
-h1, h2, h3, h4, h5, h6, strong, p, span, label, div {
-  color: inherit;
+/* Variación Modo Oscuro Adultos (Negro Profundo Sobrio) */
+[data-mode="dark"][data-theme="adultos"],
+.dark[data-theme="adultos"] {
+  --bg: #121212;
+  --surface: #1e1e1e;
+  --surface-alt: #2c2c2c;
+  --primary: #ffffff;
+  --primary-hover: #e0e0e0;
+  --primary-subtle: rgba(255, 255, 255, 0.15);
+  --primary-text: #ffffff;
+  --border: #333333;
+  --border-focus: #ffffff;
 }
 
 /* ============================================================
-   6. INPUTS, SELECTS Y TEXTAREAS (MODO OSCURO NATIVO)
+   5. MODO ALTO CONTRASTE (ACCESIBILIDAD TOTAL)
    ============================================================ */
-input, select, textarea {
+[data-contrast="high"],
+.high-contrast {
+  --border: #000000 !important;
+  --text: #000000 !important;
+  --text-muted: #111111 !important;
+  --bg: #ffffff !important;
+  --surface: #ffffff !important;
+  --surface-alt: #eeeeee !important;
+}
+
+[data-mode="dark"][data-contrast="high"],
+.dark.high-contrast {
+  --border: #ffffff !important;
+  --text: #ffffff !important;
+  --text-muted: #dddddd !important;
+  --bg: #000000 !important;
+  --surface: #000000 !important;
+  --surface-alt: #222222 !important;
+  --primary: #ffffff !important;
+  --primary-text: #ffffff !important;
+}
+
+/* ============================================================
+   6. COMPONENTES Y ELEMENTOS PLANOS (STYLE GUIDE META)
+   ============================================================ */
+
+/* Botones Planos Tipo Facebook / Pill Buttons */
+button, .btn {
   font-family: inherit;
-  font-size: inherit;
-  background-color: var(--surface) !important;
-  color: var(--text) !important;
-  border: 1px solid var(--border) !important;
-  border-radius: 6px;
-  transition: border-color 0.2s, box-shadow 0.2s, background-color 0.2s;
-}
-
-input:focus, select:focus, textarea:focus {
-  outline: none;
-  border-color: var(--border-focus) !important;
-  box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.25) !important;
-}
-
-input::placeholder, textarea::placeholder {
-  color: var(--text-muted) !important;
-  opacity: 0.8;
-}
-
-/* Select options en modo oscuro */
-select option {
-  background-color: var(--surface) !important;
-  color: var(--text) !important;
-}
-
-/* ============================================================
-   7. BOTONES ADAPTATIVOS
-   ============================================================ */
-.btn-primary,
-.btn-full {
-  background-color: var(--primary) !important;
-  color: #ffffff !important;
-  border: none !important;
+  font-size: calc(0.9rem * var(--font-scale, 1));
   font-weight: 600;
+  letter-spacing: -0.14px;
+  border-radius: var(--radius-pill, 100px);
+  padding: 0.55rem 1.25rem;
   cursor: pointer;
-  transition: background-color 0.2s, transform 0.1s;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.45rem;
+  transition: background-color 0.15s ease, opacity 0.15s ease, border-color 0.15s ease;
+  border: 1px solid transparent;
+  outline: none;
+  user-select: none;
 }
 
-.btn-primary:hover,
-.btn-full:hover {
-  background-color: var(--primary-hover) !important;
-}
-
-.btn-primary:active,
-.btn-full:active {
+button:active {
   transform: scale(0.98);
 }
 
+/* Botón Primario (Cobalt / Meta action) */
+.btn-primary, button[type="submit"] {
+  background-color: var(--primary);
+  color: #ffffff;
+  border-color: var(--primary);
+}
+.btn-primary:hover, button[type="submit"]:hover {
+  background-color: var(--primary-hover);
+  border-color: var(--primary-hover);
+}
+
+/* Botón Secundario Plano (Gris claro de Facebook) */
 .btn-secondary {
-  background-color: var(--surface-alt) !important;
-  color: var(--text) !important;
-  border: 1px solid var(--border) !important;
-  cursor: pointer;
+  background-color: var(--surface-alt);
+  color: var(--text);
+  border-color: var(--border);
 }
-
 .btn-secondary:hover {
-  background-color: var(--border) !important;
+  background-color: var(--border);
 }
 
-.btn-action {
-  background-color: var(--surface-alt) !important;
-  color: var(--text) !important;
-  border: 1px solid var(--border) !important;
-  cursor: pointer;
+/* Botón Peligro / Rechazo */
+.btn-danger {
+  background-color: var(--danger);
+  color: #ffffff;
+  border-color: var(--danger);
+}
+.btn-danger:hover {
+  background-color: var(--danger-hover);
 }
 
-.btn-action:hover {
-  border-color: var(--primary) !important;
-  color: var(--primary) !important;
+/* Campos de Formulario Planos (Inputs, Selects, Textareas) */
+input[type="text"],
+input[type="email"],
+input[type="password"],
+input[type="number"],
+input[type="file"],
+select,
+textarea {
+  background-color: var(--surface);
+  color: var(--text);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg, 8px);
+  padding: 0.65rem 0.9rem;
+  font-size: calc(0.9rem * var(--font-scale, 1));
+  font-family: inherit;
+  width: 100%;
+  outline: none;
+  transition: border-color 0.15s ease, background-color 0.15s ease;
 }
 
-.btn-add,
-.btn-eval {
-  background-color: var(--primary-subtle) !important;
-  color: var(--primary-text) !important;
-  border-color: var(--primary) !important;
+input:focus,
+select:focus,
+textarea:focus {
+  border-color: var(--border-focus);
+  background-color: var(--surface);
+  box-shadow: 0 0 0 1px var(--border-focus);
 }
 
-.btn-pay {
-  background-color: rgba(22, 163, 74, 0.15) !important;
-  color: #16a34a !important;
-  border-color: rgba(22, 163, 74, 0.4) !important;
+/* Tablas Planas Estilo Facebook */
+table {
+  width: 100%;
+  border-collapse: separate;
+  border-spacing: 0;
+  background-color: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-xl, 16px);
+  overflow: hidden;
 }
 
-[data-mode="dark"] .btn-pay {
-  background-color: rgba(22, 163, 74, 0.25) !important;
-  color: #4ade80 !important;
+th {
+  background-color: var(--surface-alt);
+  color: var(--text-muted);
+  font-weight: 700;
+  font-size: calc(0.8rem * var(--font-scale, 1));
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  padding: 0.75rem 1rem;
+  border-bottom: 1px solid var(--border);
+  text-align: left;
 }
 
-/* Navegación por pestañas */
-.nav-link.router-link-active,
-.nav-link.active,
-.btn-sub.active {
-  background-color: var(--primary) !important;
-  color: #ffffff !important;
-  border-color: var(--primary) !important;
+td {
+  padding: 0.85rem 1rem;
+  border-bottom: 1px solid var(--border);
+  color: var(--text);
+  font-size: calc(0.88rem * var(--font-scale, 1));
 }
 
-.nav-link,
-.btn-sub {
-  background-color: var(--surface) !important;
-  color: var(--text-muted) !important;
-  border: 1px solid var(--border) !important;
+tr:last-child td {
+  border-bottom: none;
 }
 
-.nav-link:hover,
-.btn-sub:hover {
-  background-color: var(--surface-alt) !important;
-  color: var(--text) !important;
+tr:hover td {
+  background-color: var(--surface-alt);
 }
 
-/* ============================================================
-   8. SUPERFICIES, PANELES Y TARJETAS
-   ============================================================ */
-.role-view,
-.auth-card,
-.modal-box,
-.stat-card,
-.metric-card,
-.oficio-card,
-.historial-card,
-.notif-card,
-.role-nav-bar {
-  background-color: var(--surface) !important;
-  color: var(--text) !important;
-  border: 1px solid var(--border) !important;
-  box-shadow: 0 4px 6px -1px var(--shadow-color) !important;
+/* Tarjetas y Contenedores Planos */
+.card, .panel, .dashboard-container {
+  background-color: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-xl, 16px);
+  color: var(--text);
+  box-shadow: 0 1px 2px var(--shadow-color);
 }
 
-.auth-header,
-.data-table th,
-.sol-check-list {
-  background-color: var(--surface-alt) !important;
-  color: var(--text-muted) !important;
-  border-color: var(--border) !important;
+/* Badges / Chips Planos */
+.badge, .status-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.3rem;
+  padding: 0.25rem 0.65rem;
+  border-radius: var(--radius-pill, 100px);
+  font-size: 0.75rem;
+  font-weight: 700;
+  border: 1px solid transparent;
 }
 
-.data-table td {
-  border-color: var(--border) !important;
-  color: var(--text) !important;
+/* Modales Planos */
+.modal-box {
+  background-color: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-xl, 16px);
+  color: var(--text);
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.15);
 }
 
-.data-table tr:hover td {
-  background-color: var(--surface-alt) !important;
-}
-
-.code-tag,
-.badge-sm {
-  background-color: var(--surface-alt) !important;
-  color: var(--text) !important;
-  border: 1px solid var(--border) !important;
-}
-
-.box-note,
-.box-note-eval,
-.demo-accounts {
-  background-color: var(--surface-alt) !important;
-  border-color: var(--border) !important;
-  color: var(--text) !important;
-}
-
-.clean-list li,
-.sol-check-item,
-.modal-header,
-.modal-footer {
-  border-color: var(--border) !important;
-}
-
-.timeline {
-  border-left-color: var(--border) !important;
-}
-
-.timeline-dot {
-  background-color: var(--primary) !important;
-}
-
-.alert-box-info {
-  background-color: var(--primary-subtle) !important;
-  border-left: 4px solid var(--primary) !important;
-  color: var(--primary-text) !important;
-}
-
-.text-muted {
-  color: var(--text-muted) !important;
+/* Iconos de Lucide */
+.inline-icon {
+  display: inline-block;
+  vertical-align: middle;
+  flex-shrink: 0;
 }

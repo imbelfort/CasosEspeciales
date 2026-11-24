@@ -7,6 +7,7 @@ use App\Http\Controllers\Api\CupoController;
 use App\Http\Controllers\Api\EvaluacionController;
 use App\Http\Controllers\Api\NotificacionController;
 use App\Http\Controllers\Api\OficioCpdController;
+use App\Http\Controllers\Api\PagoController;
 use App\Http\Controllers\Api\ReporteController;
 use App\Http\Controllers\Api\SolicitudController;
 use App\Http\Controllers\Api\UsuarioAdminController;
@@ -14,6 +15,9 @@ use Illuminate\Support\Facades\Route;
 
 // Rutas Públicas (Auth y Catálogos iniciales)
 Route::post('/auth/login', [AuthController::class, 'login'])->name('login');
+
+// Callback público de PagoFácil QR (Webhook de notificación)
+Route::post('/pagos/pagofacil/callback', [PagoController::class, 'callbackWebhook']);
 
 Route::get('/catalogos/carreras', [CatalogoController::class, 'carreras']);
 Route::get('/catalogos/periodos', [CatalogoController::class, 'periodos']);
@@ -47,10 +51,16 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::post('/cupos/bloqueos/{id}/liberar', [CupoController::class, 'liberar']);
     Route::get('/cupos/grupos', [CupoController::class, 'listarGruposConCupos']);
 
-    // CU5: Pagos y Remisión a CPD
+    // CU5: Procesamiento de Pagos Tradicional / Oficios CPD
     Route::post('/solicitudes/{id}/pago', [OficioCpdController::class, 'registrarPago']);
     Route::post('/oficios-cpd/generar', [OficioCpdController::class, 'generarOficioRemision']);
     Route::get('/oficios-cpd', [OficioCpdController::class, 'listarOficios']);
+
+    // MÓDULO DE COBROS Y PAGOS QR (PagoFácil API v2)
+    Route::post('/solicitudes/{id}/pagar-qr', [PagoController::class, 'generarQrSolicitud']);
+    Route::get('/pagos/{id}/consultar', [PagoController::class, 'consultarEstado']);
+    Route::post('/pagos/{id}/simular', [PagoController::class, 'simularPagoDemo']);
+    Route::get('/pagos', [PagoController::class, 'listarPagos']);
 
     // CU6: CPD
     Route::get('/cpd/pendientes', [CpdController::class, 'pendientes']);
