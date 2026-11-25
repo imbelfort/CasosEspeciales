@@ -29,8 +29,8 @@ class NotificacionController extends Controller
     {
         $user = $request->user();
         $notificacion = Notificacion::where('id_usuario', $user->id_usuario)->findOrFail($id);
-        $notificacion->fecha_lectura = now();
-        $notificacion->save();
+        Notificacion::whereKey($notificacion->id)->whereNull('fecha_lectura')->update(['fecha_lectura' => now()]);
+        $notificacion->refresh();
 
         return response()->json(['mensaje' => 'Notificación marcada como leída.', 'notificacion' => $notificacion]);
     }

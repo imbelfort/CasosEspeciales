@@ -333,7 +333,9 @@ class PagoController extends Controller
                 'APROBADA',
                 'VALIDACION_MANUAL_PAGO',
                 $user->id_usuario,
-                "Dirección validó manualmente el arancel (Ref. {$pago->numero_pago})."
+                "Dirección validó manualmente el arancel (Ref. {$pago->numero_pago}).",
+                "Solicitud aprobada - {$solicitud->codigo}",
+                'Dirección validó tu pago. Tu solicitud está aprobada y queda pendiente de remisión a CPD.'
             );
 
             return response()->json(['message' => 'Pago validado manualmente.', 'pago' => $pago]);
@@ -377,7 +379,9 @@ class PagoController extends Controller
                     'APROBADA',
                     $origen,
                     $pago->id_usuario,
-                    "Pago de arancel completado exitosamente por QR PagoFácil (Ref: {$pago->numero_pago}). Trámite pasa a APROBADA para remisión a CPD."
+                    "Pago de arancel completado exitosamente por QR PagoFácil (Ref: {$pago->numero_pago}). Trámite pasa a APROBADA para remisión a CPD.",
+                    "Solicitud aprobada - {$solicitud->codigo}",
+                    'Se confirmó tu pago por QR. Tu solicitud está aprobada y queda pendiente de remisión a CPD.'
                 );
             }
         });

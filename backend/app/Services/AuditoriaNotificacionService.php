@@ -2,6 +2,7 @@
 
 namespace App\Services;
 
+use App\Jobs\EnviarAvisoPush;
 use App\Models\HistorialSolicitud;
 use App\Models\Notificacion;
 use App\Models\Solicitud;
@@ -43,18 +44,30 @@ class AuditoriaNotificacionService
         if ($asuntoNotif && $mensajeNotif) {
             $estudianteUsuario = Usuario::find($solicitud->id_estudiante);
             if ($estudianteUsuario) {
-                Notificacion::create([
+                $notificacion = Notificacion::create([
                     'id_usuario' => $estudianteUsuario->id_usuario,
                     'id_solicitud' => $solicitud->id,
                     'destinatario' => $estudianteUsuario->email,
                     'tipo' => $accion,
                     'asunto' => $asuntoNotif,
                     'mensaje' => $mensajeNotif,
-                    'canal' => 'EMAIL',
-                    'estado' => 'PENDIENTE',
+                    'canal' => 'IN_APP',
+                    'estado' => 'ENVIADA',
                     'intentos' => 0,
-                    'fecha_creacion' => now()
+                    'fecha_creacion' => now(),
+                    'fecha_envio' => now(),
                 ]);
+
+                if (in_array($estadoNuevo, ['APROBADA_DIRECCION', 'APROBADA', 'HABILITADA'], true)
+                    && config('webpush.public_key') && config('webpush.private_key') && config('webpush.subject')) {
+                    DB::afterCommit(static function () use ($notificacion) {
+                        try {
+                            EnviarAvisoPush::dispatch($notificacion->id)->onQueue('web-push');
+                        } catch (\Throwable $error) {
+                            report($error);
+                        }
+                    });
+                }
             }
         }
     }

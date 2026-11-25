@@ -7,6 +7,7 @@ use App\Http\Controllers\Api\CpdController;
 use App\Http\Controllers\Api\CupoController;
 use App\Http\Controllers\Api\EvaluacionController;
 use App\Http\Controllers\Api\NotificacionController;
+use App\Http\Controllers\Api\PushSubscriptionController;
 use App\Http\Controllers\Api\OficioCpdController;
 use App\Http\Controllers\Api\PagoController;
 use App\Http\Controllers\Api\ReporteController;
@@ -76,6 +77,9 @@ Route::middleware([RegistrarBitacoraCpd::class, 'auth:sanctum'])->group(function
 
     // CU7: Notificaciones del Usuario
     Route::get('/notificaciones', [NotificacionController::class, 'misNotificaciones']);
+    Route::get('/notificaciones/push', [PushSubscriptionController::class, 'configuracion']);
+    Route::put('/notificaciones/push', [PushSubscriptionController::class, 'guardar'])->middleware('throttle:12,1');
+    Route::delete('/notificaciones/push', [PushSubscriptionController::class, 'eliminar']);
     Route::post('/notificaciones/{id}/leer', [NotificacionController::class, 'marcarLeida']);
 
     // CU8: Reportes y Estadísticas (Exclusivo para Administrativos / Dirección)

@@ -124,7 +124,7 @@
 
 <script setup>
 import { ref } from 'vue';
-import { useRouter } from 'vue-router';
+import { useRoute, useRouter } from 'vue-router';
 import { 
   Mail, 
   Lock, 
@@ -142,6 +142,7 @@ import api from '../../services/api';
 
 const emit = defineEmits(['auth-success']);
 const router = useRouter();
+const route = useRoute();
 
 const loading = ref(false);
 const errorLogin = ref('');
@@ -180,7 +181,7 @@ const handleLogin = async () => {
     } else if (roles.includes('CPD')) {
       router.push('/cpd');
     } else {
-      router.push('/estudiante');
+      router.push({ path: '/estudiante', query: route.query.avisos === '1' ? { avisos: '1' } : {} });
     }
   } catch (e) {
     errorLogin.value = e.response?.data?.message || 'Credenciales incorrectas o usuario deshabilitado.';

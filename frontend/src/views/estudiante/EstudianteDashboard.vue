@@ -766,6 +766,18 @@ const subirComprobante = async () => {
 };
 
 watch(
+  () => route.path === '/estudiante' ? route.query.solicitud : null,
+  (id) => {
+    if (typeof id !== 'string' || !/^\d+$/.test(id)) return;
+    verDetalle({ id });
+    const query = { ...route.query };
+    delete query.solicitud;
+    router.replace({ path: route.path, query, hash: route.hash });
+  },
+  { immediate: true }
+);
+
+watch(
   () => [route.path, route.query.accion, datosInicialesCargados.value, props.usuario],
   ([path, accion, cargados, usuario]) => {
     if (path !== '/estudiante' || !cargados || !usuario?.roles?.some(rol => rol.nombre === 'ESTUDIANTE')) return;

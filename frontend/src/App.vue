@@ -13,10 +13,6 @@
           <router-link to="/estudiante/historial" class="nav-link" :class="{ active: $route.path === '/estudiante/historial' }">
             <History :size="16" class="nav-icon" /> Historial de Casos (CU7)
           </router-link>
-          <router-link to="/estudiante/notificaciones" class="nav-link" :class="{ active: $route.path === '/estudiante/notificaciones' }">
-            <Bell :size="16" class="nav-icon" /> Notificaciones
-            <span v-if="notificacionesNoLeidas > 0" class="badge-count">{{ notificacionesNoLeidas }}</span>
-          </router-link>
         </template>
 
         <!-- VISTAS DE DIRECCIÓN Y PERSONAL ACADÉMICO -->
@@ -56,12 +52,10 @@
 </template>
 
 <script setup>
-import { ref, onMounted, computed, watch } from 'vue';
-import { useRoute } from 'vue-router';
+import { ref, onMounted, computed } from 'vue';
 import { 
   FileText, 
   History, 
-  Bell, 
   GraduationCap, 
   Server, 
   BarChart3 
@@ -70,9 +64,7 @@ import Navbar from './components/layout/Navbar.vue';
 import ViewCounter from './components/common/ViewCounter.vue';
 import api from './services/api';
 
-const route = useRoute();
 const usuario = ref(null);
-const notificacionesNoLeidas = ref(0);
 
 const rolActual = computed(() => {
   if (!usuario.value || !usuario.value.roles || usuario.value.roles.length === 0) return 'ESTUDIANTE';
@@ -81,27 +73,11 @@ const rolActual = computed(() => {
 
 const onAuthSuccess = (u) => {
   usuario.value = u;
-  cargarNotificacionesCount();
 };
 
 const onLogout = () => {
   usuario.value = null;
-  notificacionesNoLeidas.value = 0;
 };
-
-const cargarNotificacionesCount = async () => {
-  if (!usuario.value || rolActual.value !== 'ESTUDIANTE') return;
-  try {
-    const res = await api.get('/notificaciones');
-    notificacionesNoLeidas.value = res.data.filter(n => !n.fecha_lectura).length;
-  } catch (e) {}
-};
-
-watch(() => route.path, () => {
-  if (usuario.value && rolActual.value === 'ESTUDIANTE') {
-    cargarNotificacionesCount();
-  }
-});
 
 onMounted(async () => {
   const token = localStorage.getItem('token');
@@ -109,7 +85,6 @@ onMounted(async () => {
     try {
       const res = await api.get('/auth/me');
       usuario.value = res.data;
-      cargarNotificacionesCount();
     } catch (e) {
       localStorage.removeItem('token');
       usuario.value = null;
@@ -169,14 +144,6 @@ onMounted(async () => {
 }
 .nav-icon {
   flex-shrink: 0;
-}
-.badge-count {
-  background: var(--danger);
-  color: #ffffff;
-  font-size: 0.7rem;
-  padding: 0.1rem 0.4rem;
-  border-radius: 10px;
-  font-weight: bold;
 }
 .app-footer {
   background: var(--surface);

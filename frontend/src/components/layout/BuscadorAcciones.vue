@@ -63,7 +63,7 @@ const paginas = [
   { nombre: 'Mis solicitudes', palabras: 'mis casos especiales', destino: '/estudiante' },
   { nombre: 'Historial de casos', palabras: 'solicitudes anteriores tramites', destino: '/estudiante/historial' },
   { nombre: 'Malla curricular e historial académico', palabras: 'avance materias plan estudios', destino: { path: '/estudiante', query: { accion: 'malla' } } },
-  { nombre: 'Notificaciones', palabras: 'avisos mensajes', destino: '/estudiante/notificaciones' },
+  { nombre: 'Notificaciones', palabras: 'avisos mensajes', destino: { path: '/estudiante', query: { avisos: '1' } } },
   { nombre: 'Gestión de usuarios', palabras: 'registrar estudiantes personal administrativo', destino: '/direccion' },
   { nombre: 'Evaluar solicitudes', palabras: 'casos especiales evaluacion direccion', destino: { path: '/direccion', query: { seccion: 'solicitudes' } } },
   { nombre: 'Control de cupos', palabras: 'grupos reservas ampliar disponibilidad', destino: { path: '/direccion', query: { seccion: 'cupos' } } },

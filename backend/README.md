@@ -7,6 +7,22 @@
 <a href="https://packagist.org/packages/laravel/framework"><img src="https://img.shields.io/packagist/l/laravel/framework" alt="License"></a>
 </p>
 
+## Notificaciones del navegador
+
+La campana del estudiante muestra los avisos que guarda Laravel. Para habilitar la entrega con la pestaña cerrada, instala las dependencias, aplica las migraciones y genera las claves desde `backend`.
+
+```sh
+composer install
+php artisan migrate
+php artisan webpush:claves
+```
+
+Agrega las claves al `.env` junto con `WEB_PUSH_SUBJECT`, usando una URL HTTPS o un correo de contacto en formato `mailto:`. En desarrollo local también puedes usar la URL de Laravel en localhost. Conserva la misma pareja de claves para las suscripciones existentes. Si usas caché de configuración, vuelve a generarla después de modificar el entorno.
+
+Inicia el proceso de la cola con `php artisan queue:work --queue=web-push`. El estudiante puede pulsar **Activar avisos del navegador** en la campana después de iniciar sesión. La aplicación debe servirse por HTTPS o desde `localhost`.
+
+Si OpenSSL de XAMPP requiere el archivo de configuración, define `OPENSSL_CONF` con la ruta a `openssl.cnf` en la terminal desde la que generas las claves e inicias el proceso de la cola.
+
 ## About Laravel
 
 Laravel is a web application framework with expressive, elegant syntax. We believe development must be an enjoyable and creative experience to be truly fulfilling. Laravel takes the pain out of development by easing common tasks used in many web projects, such as:

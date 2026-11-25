@@ -8,6 +8,8 @@
     <BuscadorAcciones :usuario="usuario" />
 
     <div ref="controles" class="controles" @keydown.esc="cerrarConEscape" @focusout="alSalir">
+      <NotificacionesMenu v-if="usuario?.roles?.[0]?.nombre === 'ESTUDIANTE'"
+        :key="usuario.id_usuario" :usuario="usuario" />
       <details name="panel-cabecera">
         <summary class="icono" title="Apariencia y accesibilidad" aria-label="Apariencia y accesibilidad">
           <SlidersHorizontal :size="19" aria-hidden="true" />
@@ -69,6 +71,7 @@ import { useRouter } from 'vue-router';
 import { Contrast, GraduationCap, LogOut, Palette, SlidersHorizontal, SunMoon, Type, UserRound } from '@lucide/vue';
 import { useTheme } from '../../services/useTheme';
 import BuscadorAcciones from './BuscadorAcciones.vue';
+import NotificacionesMenu from './NotificacionesMenu.vue';
 import api from '../../services/api';
 
 defineProps({ usuario: Object });
@@ -130,11 +133,11 @@ async function logout() {
   border-bottom: 1px solid var(--border);
 }
 .marca { display: inline-flex; align-items: center; justify-self: start; gap: .55rem; color: var(--text); text-decoration: none; font-weight: 700; line-height: 1.2; }
-.marca-icono, .icono { display: grid; place-items: center; inline-size: 2.25rem; block-size: 2.25rem; flex-shrink: 0; }
+.marca-icono, .controles :deep(.icono) { display: grid; place-items: center; inline-size: 2.25rem; block-size: 2.25rem; flex-shrink: 0; }
 .marca-icono { background: var(--primary); color: var(--on-primary); border-radius: var(--radius-md); }
 .marca small { display: block; margin-top: .15rem; color: var(--text-muted); font-size: .72rem; font-weight: 500; }
 .controles { position: relative; z-index: 2; justify-self: end; display: flex; gap: .45rem; }
-.icono {
+.controles :deep(.icono) {
   color: var(--text);
   background: var(--surface-alt);
   border: 1px solid var(--border);
@@ -142,15 +145,15 @@ async function logout() {
   cursor: pointer;
   list-style: none;
 }
-.icono::-webkit-details-marker { display: none; }
-.icono-cuenta, details[open] > .icono { color: var(--primary-text); background: var(--primary-subtle); border-color: var(--primary-text); }
-.icono:hover { border-color: var(--primary-text); }
-.cabecera :is(a, summary, input, select):focus-visible { outline: 2px solid var(--text); outline-offset: 2px; }
-.panel {
+.controles :deep(.icono::-webkit-details-marker) { display: none; }
+.icono-cuenta, .controles :deep(details[open] > .icono) { color: var(--primary-text); background: var(--primary-subtle); border-color: var(--primary-text); }
+.controles :deep(.icono:hover) { border-color: var(--primary-text); }
+.cabecera :deep(:is(a, summary, button, input, select):focus-visible) { outline: 2px solid var(--text); outline-offset: 2px; }
+.controles :deep(.panel) {
   position: absolute;
   inset-inline-end: 0;
   top: calc(100% + .5rem);
-  width: min(17rem, calc(100vw - 1.5rem));
+  width: min(var(--ancho-panel, 17rem), calc(100vw - 1.5rem));
   max-height: calc(100dvh - 5rem);
   overflow: auto;
   display: grid;
@@ -162,7 +165,7 @@ async function logout() {
   border-radius: var(--radius-xl);
   box-shadow: 0 4px 12px var(--shadow-color);
 }
-.panel h2 { margin: 0; font-size: .9rem; }
+.controles :deep(.panel h2) { margin: 0; font-size: .9rem; }
 .ajuste { display: grid; gap: .35rem; font-size: .83rem; }
 .ajuste > span:first-child, .escala { display: flex; align-items: center; gap: .45rem; }
 .ajuste select { padding: .35rem .45rem; font-size: inherit; }

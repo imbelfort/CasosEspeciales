@@ -2,7 +2,6 @@ import { createRouter, createWebHistory } from 'vue-router';
 import LoginView from '../views/auth/LoginView.vue';
 import EstudianteDashboard from '../views/estudiante/EstudianteDashboard.vue';
 import HistorialSolicitudesView from '../views/estudiante/HistorialSolicitudesView.vue';
-import NotificacionesView from '../views/estudiante/NotificacionesView.vue';
 import DireccionDashboard from '../views/direccion/DireccionDashboard.vue';
 import CpdDashboard from '../views/cpd/CpdDashboard.vue';
 import ReportesView from '../views/reportes/ReportesView.vue';
@@ -14,7 +13,7 @@ const routes = [
   // Rutas Estudiante
   { path: '/estudiante', component: EstudianteDashboard, meta: { auth: true, role: 'ESTUDIANTE' } },
   { path: '/estudiante/historial', component: HistorialSolicitudesView, meta: { auth: true, role: 'ESTUDIANTE' } },
-  { path: '/estudiante/notificaciones', component: NotificacionesView, meta: { auth: true, role: 'ESTUDIANTE' } },
+  { path: '/estudiante/notificaciones', redirect: { path: '/estudiante', query: { avisos: '1' } } },
 
   // Rutas Administrativas
   { path: '/direccion', component: DireccionDashboard, meta: { auth: true, roles: ['DIRECTOR', 'PERSONAL_ACADEMICO'] } },
@@ -35,9 +34,9 @@ const router = createRouter({
 router.beforeEach((to, from, next) => {
   const token = localStorage.getItem('token');
   if (to.meta.auth && !token) {
-    next('/login');
+    next({ path: '/login', query: to.query.avisos === '1' ? { avisos: '1' } : {} });
   } else if (to.meta.guest && token) {
-    next('/estudiante');
+    next({ path: '/estudiante', query: to.query.avisos === '1' ? { avisos: '1' } : {} });
   } else {
     next();
   }
