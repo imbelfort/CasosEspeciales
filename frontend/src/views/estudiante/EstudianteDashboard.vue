@@ -24,8 +24,8 @@
         <button 
           @click="abrirModalRegistro" 
           class="btn-primary" 
-          :disabled="tieneCasoEnTemporada || limiteCarreraAlcanzado"
-          :title="tieneCasoEnTemporada ? 'Ya tienes un caso registrado en este período. Solo se permite 1 por temporada.' : (limiteCarreraAlcanzado ? 'Has alcanzado el límite máximo de casos en tu carrera (5).' : 'Registrar nueva solicitud')"
+          :disabled="limiteCarreraAlcanzado"
+          :title="limiteCarreraAlcanzado ? 'Has alcanzado el límite máximo de casos en tu carrera (5).' : 'Registrar nueva solicitud'"
         >
           <Plus :size="16" class="btn-icon" /> Registrar Solicitud de Caso Especial
         </button>
@@ -33,11 +33,7 @@
     </div>
 
     <!-- BANNER DE RESTRICCIONES INSTITUCIONALES -->
-    <div v-if="tieneCasoEnTemporada" class="banner-aviso-info">
-      <AlertCircle :size="16" class="inline-icon text-info" />
-      <span>Ya tienes una solicitud activa registrada en la gestión actual (<strong>{{ casoActivoTemporada?.codigo }}</strong> en estado <strong>{{ casoActivoTemporada?.estado }}</strong>). La normativa UAGRM establece 1 solicitud por temporada.</span>
-    </div>
-    <div v-else-if="limiteCarreraAlcanzado" class="banner-aviso-warn">
+    <div v-if="limiteCarreraAlcanzado" class="banner-aviso-warn">
       <AlertCircle :size="16" class="inline-icon text-warning" />
       <span>Has alcanzado el límite institucional máximo de 5 casos especiales aprobados en tu carrera universitaria.</span>
     </div>
@@ -439,16 +435,6 @@ const limiteMateriasCaso = computed(() => {
   return periodoActivo.value?.max_materias_por_caso || 5;
 });
 
-const casoActivoTemporada = computed(() => {
-  const pId = periodoActivo.value?.id;
-  if (!pId) return null;
-  return solicitudes.value.find(s => s.id_periodo === pId && !['RECHAZADA_DIRECCION', 'RECHAZADA_CPD'].includes(s.estado)) || null;
-});
-
-const tieneCasoEnTemporada = computed(() => {
-  return !!casoActivoTemporada.value;
-});
-
 const totalCasosCarrera = computed(() => {
   return solicitudes.value.filter(s => ['HABILITADA', 'APROBADA', 'APROBADA_DIRECCION', 'REMITIDA_A_CPD'].includes(s.estado)).length;
 });
@@ -625,11 +611,6 @@ const seleccionarMateriaDesdeMalla = (materia) => {
     return;
   }
   materiaSeleccionadaMalla.value = materia;
-  
-  if (tieneCasoEnTemporada.value) {
-    alert(`Ya tienes el caso ${casoActivoTemporada.value?.codigo} registrado en esta temporada.`);
-    return;
-  }
 
   // Cerrar el modal del visor de avance si estaba abierto
   modalAvance.value = false;
@@ -651,10 +632,6 @@ const seleccionarMateriaDesdeMalla = (materia) => {
 };
 
 const abrirModalRegistro = () => {
-  if (tieneCasoEnTemporada.value) {
-    alert(`Solo se permite 1 caso especial por temporada. Ya tienes registrada la solicitud ${casoActivoTemporada.value?.codigo}.`);
-    return;
-  }
   if (limiteCarreraAlcanzado.value) {
     alert('Has alcanzado el límite institucional máximo de 5 casos especiales aprobados en toda tu carrera.');
     return;

@@ -56,17 +56,6 @@ class SolicitudController extends Controller
                 return response()->json(['error' => "El período de recepción de casos especiales ya ha finalizado (Concluyó el {$periodo->fecha_fin_solicitud})."], 422);
             }
 
-            // Regla UAGRM: Solo se permite 1 solicitud por temporada/período
-            $solicitudExistente = Solicitud::where('id_estudiante', $user->id_usuario)
-                ->where('id_periodo', $periodo->id)
-                ->whereNotIn('estado', ['RECHAZADA_DIRECCION', 'RECHAZADA_CPD'])
-                ->first();
-            if ($solicitudExistente) {
-                return response()->json([
-                    'error' => "Ya tienes un caso especial registrado en este período ({$solicitudExistente->codigo} en estado {$solicitudExistente->estado}). Solo se permite 1 solicitud por temporada."
-                ], 422);
-            }
-
             // Regla UAGRM: Límite histórico de casos por estudiante en toda su carrera (por defecto 5)
             $limiteCarrera = $periodo->max_casos_carrera ?? 5;
             $totalCasosHistoricos = Solicitud::where('id_estudiante', $user->id_usuario)
