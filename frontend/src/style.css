@@ -36,13 +36,11 @@ body {
   --primary-hover: #0457cb;      /* Primary Deep */
   --primary-subtle: #e7f3ff;     /* Soft Cobalt Tint */
   --primary-text: #0064e0;
+  --on-primary: #ffffff;
   
   --secondary: #1876f2;          /* Facebook Blue */
   --secondary-hover: #166fe5;
   --accent: #1876f2;
-  
-  --ink-button: #000000;         /* Marketing button black */
-  --ink-button-text: #ffffff;
   
   --danger: #e41e3f;             /* Meta Critical */
   --danger-hover: #f0284a;       /* Critical Strong */
@@ -81,13 +79,11 @@ body {
   --primary-hover: #d95e00;
   --primary-subtle: #fff3e6;
   --primary-text: #b34a00;
+  --on-primary: #140b00;
 
   --secondary: #f7b928;
   --secondary-hover: #e0a316;
   --accent: #f27405;
-
-  --ink-button: #3d2300;
-  --ink-button-text: #ffffff;
 
   --danger: #e41e3f;
   --danger-hover: #c91432;
@@ -126,9 +122,6 @@ body {
   --secondary-hover: #31353b;
   --accent: #0064e0;
 
-  --ink-button: #0a1317;
-  --ink-button-text: #ffffff;
-
   --danger: #d92d20;
   --danger-hover: #b42318;
   --success: #039855;
@@ -158,6 +151,7 @@ body {
    ============================================================ */
 [data-mode="dark"],
 .dark {
+  color-scheme: dark;
   --bg: #18191a;                 /* Fondo oscuro plano oficial de Facebook */
   --surface: #242526;            /* Tarjetas elevadas de Facebook Dark */
   --surface-alt: #3a3b3c;        /* Botones secundarios y campos de entrada */
@@ -167,8 +161,7 @@ body {
   --border-focus: #2d88ff;       /* Azul brillante para foco */
   --shadow-color: rgba(0, 0, 0, 0.3);
 
-  --ink-button: #ffffff;
-  --ink-button-text: #18191a;
+  --on-primary: #140b00;
 }
 
 /* Variación Modo Oscuro Jóvenes (Facebook Blue Neón) */
@@ -232,8 +225,6 @@ body {
   --bg: #000000 !important;
   --surface: #000000 !important;
   --surface-alt: #222222 !important;
-  --primary: #ffffff !important;
-  --primary-text: #ffffff !important;
 }
 
 /* ============================================================
@@ -266,7 +257,7 @@ button:active {
 /* Botón Primario (Cobalt / Meta action) */
 .btn-primary, button[type="submit"] {
   background-color: var(--primary);
-  color: #ffffff;
+  color: var(--on-primary);
   border-color: var(--primary);
 }
 .btn-primary:hover, button[type="submit"]:hover {
@@ -276,12 +267,17 @@ button:active {
 
 /* Botón Secundario Plano (Gris claro de Facebook) */
 .btn-secondary {
-  background-color: var(--surface-alt);
+  background-color: var(--primary-subtle);
   color: var(--text);
-  border-color: var(--border);
+  border-color: var(--primary-text);
 }
 .btn-secondary:hover {
-  background-color: var(--border);
+  background-color: var(--surface);
+}
+
+:is(button, .btn):focus-visible {
+  outline: 2px solid var(--text);
+  outline-offset: 2px;
 }
 
 /* Botón Peligro / Rechazo */

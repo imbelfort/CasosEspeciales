@@ -1,9 +1,8 @@
 <template>
-  <div class="view-counter-badge" :title="`Esta vista ha sido visitada ${visitas} veces (${totalVisitas} visitas en toda la app)`">
-    <Eye :size="14" class="counter-icon" />
-    <span class="counter-label">Visitas en esta vista:</span>
-    <span class="counter-num">{{ visitas }}</span>
-  </div>
+  <p class="view-counter" :title="`${totalVisitas} visitas en toda la app`">
+    <Eye :size="16" aria-hidden="true" />
+    <span>Visitas en esta vista: <strong>{{ visitas }}</strong></span>
+  </p>
 </template>
 
 <script setup>
@@ -14,33 +13,19 @@ const { visitas, totalVisitas } = useViewCounter();
 </script>
 
 <style scoped>
-.view-counter-badge {
+.view-counter {
+  margin: 0;
   display: inline-flex;
   align-items: center;
-  gap: 0.35rem;
-  padding: 0.3rem 0.65rem;
-  border-radius: 20px;
-  background: var(--surface-alt);
+  gap: 0.5rem;
   color: var(--text-muted);
-  border: 1px solid var(--border);
-  font-size: 0.78rem;
-  font-weight: 600;
-  box-shadow: 0 1px 2px var(--shadow-color);
-  user-select: none;
+  font-size: calc(0.875rem * var(--font-scale, 1));
 }
-.counter-icon {
-  color: var(--primary);
+.view-counter svg {
   flex-shrink: 0;
 }
-.counter-label {
-  opacity: 0.85;
-}
-.counter-num {
-  background: var(--primary-subtle);
-  color: var(--primary-text);
-  padding: 0.05rem 0.4rem;
-  border-radius: 10px;
-  font-weight: 800;
-  font-size: 0.75rem;
+.view-counter strong {
+  color: var(--text);
+  font-variant-numeric: tabular-nums;
 }
 </style>

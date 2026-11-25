@@ -176,8 +176,8 @@ const logout = async () => {
 
 /* 1. Promo Banner Strip (Estilo Meta: Ink-deep con texto blanco o sutil) */
 .meta-promo-strip {
-  background-color: var(--primary);
-  color: #ffffff;
+  background-color: var(--ink-button);
+  color: var(--ink-button-text);
   padding: 0.35rem 1.8rem;
   font-size: 0.76rem;
   font-weight: 600;
@@ -192,7 +192,7 @@ const logout = async () => {
   gap: 0.6rem;
 }
 .promo-tag {
-  background: rgba(255, 255, 255, 0.2);
+  border: 1px solid currentColor;
   padding: 0.1rem 0.45rem;
   border-radius: var(--radius-pill, 100px);
   font-size: 0.68rem;
@@ -200,7 +200,7 @@ const logout = async () => {
   letter-spacing: 0.5px;
 }
 .promo-text {
-  opacity: 0.95;
+  min-width: 0;
 }
 
 /* 2. Top Navigation Bar (64px de alto, bordes hairline planos) */
@@ -227,8 +227,8 @@ const logout = async () => {
   color: inherit;
 }
 .logo-badge {
-  background-color: var(--primary);
-  color: #ffffff;
+  background-color: var(--ink-button);
+  color: var(--ink-button-text);
   font-weight: 800;
   font-size: 0.95rem;
   letter-spacing: 1px;
@@ -373,7 +373,7 @@ const logout = async () => {
 .user-role-badge {
   font-size: 0.68rem;
   font-weight: 800;
-  color: var(--primary);
+  color: var(--text-muted);
   letter-spacing: 0.5px;
 }
 .logout-btn {
@@ -402,4 +402,29 @@ const logout = async () => {
 .icon-sun { color: #f59e0b; }
 .icon-moon { color: #3b82f6; }
 .icon-clock { color: var(--text-muted); }
+
+.meta-navbar :is(a, button, select):focus-visible {
+  outline: 2px solid var(--text);
+  outline-offset: 2px;
+}
+
+@media (max-width: 900px) {
+  .meta-navbar {
+    height: auto;
+    flex-wrap: wrap;
+    padding: .75rem 1rem;
+    gap: .75rem;
+  }
+  .navbar-center-controls {
+    order: 1;
+    flex-basis: 100%;
+  }
+  .navbar-right {
+    max-width: 100%;
+  }
+  .user-account-pill, .promo-content {
+    min-width: 0;
+    overflow-wrap: anywhere;
+  }
+}
 </style>

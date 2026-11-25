@@ -19,6 +19,7 @@ const routes = [
   // Rutas Administrativas
   { path: '/direccion', component: DireccionDashboard, meta: { auth: true, roles: ['DIRECTOR', 'PERSONAL_ACADEMICO'] } },
   { path: '/cpd', component: CpdDashboard, meta: { auth: true, roles: ['CPD', 'DIRECTOR'] } },
+  { path: '/cpd/bitacora', component: () => import('../views/cpd/BitacoraCpdView.vue'), meta: { auth: true } },
   
   // Reportes exclusivo Administrativos / CPD
   { path: '/reportes', component: ReportesView, meta: { auth: true, roles: ['DIRECTOR', 'PERSONAL_ACADEMICO', 'CPD'] } },

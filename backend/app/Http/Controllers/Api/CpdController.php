@@ -57,6 +57,8 @@ class CpdController extends Controller
             'materias_habilitadas.*.observacion' => 'nullable|string',
         ]);
 
+        $request->attributes->set('bitacora_referencia', $validated['id_solicitud']);
+
         return DB::transaction(function () use ($user, $validated) {
             $solicitud = Solicitud::lockForUpdate()->findOrFail($validated['id_solicitud']);
 

@@ -81,6 +81,7 @@ class AuthController extends Controller
         ]);
 
         $usuario = Usuario::whereRaw('LOWER(email) = ?', [strtolower($request->email)])->first();
+        $request->attributes->set('bitacora_usuario', $usuario);
 
         if (! $usuario || ! Hash::check($request->password, $usuario->password)) {
             throw ValidationException::withMessages([

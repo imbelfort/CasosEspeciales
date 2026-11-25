@@ -2,7 +2,7 @@
   <div class="app-container">
     <Navbar :usuario="usuario" @logout="onLogout" />
     
-    <!-- Barra de Navegación Estricta por Rol (RBAC de base_datos_actual.md) + Contador Global Reutilizable -->
+    <!-- Navegación por rol -->
     <div v-if="usuario" class="role-nav-bar">
       <div class="nav-links">
         <!-- VISTAS DEL ESTUDIANTE -->
@@ -24,9 +24,6 @@
           <router-link to="/direccion" class="nav-link">
             <GraduationCap :size="16" class="nav-icon" /> Dirección de Carrera (CU3/CU4/CU5)
           </router-link>
-          <router-link to="/reportes" class="nav-link">
-            <BarChart3 :size="16" class="nav-icon" /> Reportes y Estadísticas (CU8)
-          </router-link>
         </template>
 
         <!-- VISTAS DE CPD -->
@@ -34,26 +31,27 @@
           <router-link to="/cpd" class="nav-link">
             <Server :size="16" class="nav-icon" /> Procesamiento CPD (CU6)
           </router-link>
-          <router-link to="/reportes" class="nav-link">
-            <BarChart3 :size="16" class="nav-icon" /> Reportes y Estadísticas (CU8)
-          </router-link>
         </template>
+        <router-link v-if="usuario.roles?.some(rol => ['CPD', 'DIRECTOR', 'PERSONAL_ACADEMICO'].includes(rol.nombre))" to="/reportes" class="nav-link">
+          <BarChart3 :size="16" class="nav-icon" /> Reportes y Estadísticas (CU8)
+        </router-link>
+        <router-link v-if="usuario.roles?.some(rol => rol.nombre === 'CPD')" to="/cpd/bitacora" class="nav-link">
+          <History :size="16" class="nav-icon" /> Bitácora CPD
+        </router-link>
       </div>
 
-      <!-- Componente Reutilizable: Contador de Visitas por Vista -->
-      <div class="nav-counter">
-        <ViewCounter />
-      </div>
-    </div>
-
-    <!-- Si no hay usuario logueado (p. ej. pantalla login), también se muestra el contador reutilizable -->
-    <div v-else class="public-counter-bar">
-      <ViewCounter />
     </div>
 
     <main class="content-wrapper">
       <router-view :usuario="usuario" @auth-success="onAuthSuccess" />
     </main>
+
+    <footer class="app-footer">
+      <div class="footer-content">
+        <p class="footer-brand"><strong><a href="http://localhost:5173/">Casos Especiales</a> - grupo 26</strong></p>
+        <ViewCounter />
+      </div>
+    </footer>
   </div>
 </template>
 
@@ -134,7 +132,6 @@ onMounted(async () => {
   border-bottom: 1px solid var(--border);
   padding: 0.45rem 1.8rem;
   display: flex;
-  justify-content: space-between;
   align-items: center;
   flex-wrap: wrap;
   gap: 0.8rem;
@@ -161,9 +158,13 @@ onMounted(async () => {
   background: var(--surface-alt);
   color: var(--text);
 }
-.nav-link.router-link-active, .nav-link.active {
-  background: var(--primary);
-  color: #ffffff;
+.nav-link.router-link-exact-active, .nav-link.active {
+  background: var(--ink-button);
+  color: var(--ink-button-text);
+}
+.nav-link:focus-visible {
+  outline: 2px solid var(--text);
+  outline-offset: 2px;
 }
 .nav-icon {
   flex-shrink: 0;
@@ -176,17 +177,31 @@ onMounted(async () => {
   border-radius: 10px;
   font-weight: bold;
 }
-.nav-counter {
-  display: flex;
-  align-items: center;
+.app-footer {
+  background: var(--surface);
+  border-top: 1px solid var(--border);
 }
-.public-counter-bar {
+.footer-content {
   display: flex;
-  justify-content: flex-end;
-  padding: 0.5rem 1.8rem 0;
+  flex-wrap: wrap;
+  justify-content: space-between;
+  align-items: center;
+  gap: 0.5rem 1rem;
+  padding: 0.75rem 1rem;
   max-width: 1280px;
   margin: 0 auto;
-  width: 100%;
+}
+.footer-brand {
+  margin: 0;
+  font-size: calc(0.875rem * var(--font-scale, 1));
+}
+.footer-brand a {
+  color: inherit;
+  text-underline-offset: 0.15em;
+}
+.footer-brand a:focus-visible {
+  outline: 2px solid var(--text);
+  outline-offset: 2px;
 }
 .content-wrapper {
   flex: 1;

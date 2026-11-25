@@ -3,10 +3,9 @@
 namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
-use App\Models\Grupo;
-use App\Models\Periodo;
 use App\Models\Reporte;
 use App\Models\Solicitud;
+use App\Models\Usuario;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 
@@ -22,7 +21,7 @@ class ReporteController extends Controller
      */
     public function reporteGeneral(Request $request)
     {
-        $user = $request->user();
+        $user = $this->usuarioReportes($request);
 
         $total = Solicitud::count();
         $pendientesEvaluacion = Solicitud::where('estado', 'ENVIADA')->count();
@@ -55,13 +54,14 @@ class ReporteController extends Controller
 
     public function reportePorEstado(Request $request)
     {
-        $user = $request->user();
-        $total = Solicitud::count();
+        $user = $this->usuarioReportes($request);
 
-        $estados = DB::table('solicitud')
+        $conteos = DB::table('solicitud')
             ->select('estado', DB::raw('COUNT(*) as total_estado'))
             ->groupBy('estado')
-            ->get()
+            ->get();
+        $total = $conteos->sum('total_estado');
+        $estados = $conteos
             ->map(function ($item) use ($total) {
                 $porcentaje = $total > 0 ? round(($item->total_estado * 100.0) / $total, 2) : 0;
                 return [
@@ -86,7 +86,7 @@ class ReporteController extends Controller
 
     public function reporteCupos(Request $request)
     {
-        $user = $request->user();
+        $user = $this->usuarioReportes($request);
 
         $cupos = DB::table('grupo as g')
             ->join('materia as m', 'g.id_materia', '=', 'm.id')
@@ -116,5 +116,19 @@ class ReporteController extends Controller
         ]);
 
         return response()->json($cupos);
+    }
+
+    private function usuarioReportes(Request $request): Usuario
+    {
+        $usuario = $request->user();
+
+        abort_unless(
+            $usuario->estado === 'ACTIVO'
+                && $usuario->roles->pluck('nombre')->intersect(['CPD', 'DIRECTOR', 'PERSONAL_ACADEMICO'])->isNotEmpty(),
+            403,
+            'Acceso restringido a Reportes.'
+        );
+
+        return $usuario;
     }
 }

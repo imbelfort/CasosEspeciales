@@ -1,6 +1,7 @@
 <?php
 
 use App\Http\Controllers\Api\AuthController;
+use App\Http\Controllers\Api\BitacoraCpdController;
 use App\Http\Controllers\Api\CatalogoController;
 use App\Http\Controllers\Api\CpdController;
 use App\Http\Controllers\Api\CupoController;
@@ -11,10 +12,11 @@ use App\Http\Controllers\Api\PagoController;
 use App\Http\Controllers\Api\ReporteController;
 use App\Http\Controllers\Api\SolicitudController;
 use App\Http\Controllers\Api\UsuarioAdminController;
+use App\Http\Middleware\RegistrarBitacoraCpd;
 use Illuminate\Support\Facades\Route;
 
 // Rutas Públicas (Auth y Catálogos iniciales)
-Route::post('/auth/login', [AuthController::class, 'login'])->name('login');
+Route::post('/auth/login', [AuthController::class, 'login'])->middleware(RegistrarBitacoraCpd::class)->name('login');
 
 // Callback público de PagoFácil QR (Webhook de notificación)
 Route::post('/pagos/pagofacil/callback', [PagoController::class, 'callbackWebhook']);
@@ -24,10 +26,10 @@ Route::get('/catalogos/periodos', [CatalogoController::class, 'periodos']);
 Route::get('/catalogos/materias', [CatalogoController::class, 'materias']);
 
 // Rutas Protegidas con Sanctum
-Route::middleware('auth:sanctum')->group(function () {
+Route::middleware([RegistrarBitacoraCpd::class, 'auth:sanctum'])->group(function () {
     // Auth & Perfil
     Route::get('/auth/me', [AuthController::class, 'me']);
-    Route::post('/auth/logout', [AuthController::class, 'logout']);
+    Route::post('/auth/logout', [AuthController::class, 'logout'])->name('auth.logout');
 
     // CU1: Gestión de Usuarios y Roles (Exclusivo Dirección / Personal Académico)
     Route::get('/admin/usuarios', [UsuarioAdminController::class, 'listar']);
@@ -68,6 +70,7 @@ Route::middleware('auth:sanctum')->group(function () {
 
     // CU6: CPD
     Route::get('/cpd/pendientes', [CpdController::class, 'pendientes']);
+    Route::get('/cpd/bitacora', [BitacoraCpdController::class, 'index']);
     Route::post('/cpd/responder', [CpdController::class, 'responder']);
     Route::put('/cpd/periodo/{id}/config', [CpdController::class, 'actualizarPeriodoConfig']);
 

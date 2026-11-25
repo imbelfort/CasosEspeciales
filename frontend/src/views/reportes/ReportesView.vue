@@ -1,188 +1,210 @@
-<template>
-  <div class="role-view">
-    <div class="view-header">
-      <div>
-        <h2>Auditoría de Reportes y Estadísticas (CU8)</h2>
-        <p class="view-desc">Métricas acumuladas del sistema y distribución porcentual dinámica de estados.</p>
-      </div>
-      <button @click="cargarReportes" class="btn-secondary">
-        <RefreshCw :size="15" class="inline-icon" /> Actualizar Datos
+﻿<template>
+  <section class="reportes" :aria-busy="cargando">
+    <header class="encabezado">
+      <h1>Reportes y estadísticas</h1>
+      <button type="button" class="btn btn-secondary" :disabled="cargando" @click="cargarReportes">
+        <RefreshCw :size="16" aria-hidden="true" /> Actualizar datos
       </button>
-    </div>
+    </header>
 
-    <!-- TARJETAS DE CONTEO GENERAL -->
-    <div class="metrics-grid" v-if="reporteGeneral">
-      <div class="metric-card">
-        <span class="metric-label">
-          <Files :size="14" class="inline-icon" /> Total Solicitudes
-        </span>
-        <span class="metric-val">{{ reporteGeneral.total_solicitudes }}</span>
-      </div>
-      <div class="metric-card">
-        <span class="metric-label">
-          <Clock :size="14" class="inline-icon text-warning" /> Pendientes Evaluación
-        </span>
-        <span class="metric-val text-warning">{{ reporteGeneral.pendientes_evaluacion }}</span>
-      </div>
-      <div class="metric-card">
-        <span class="metric-label">
-          <CheckCircle2 :size="14" class="inline-icon text-info" /> Aprobadas Dirección
-        </span>
-        <span class="metric-val text-info">{{ reporteGeneral.aprobadas_direccion }}</span>
-      </div>
-      <div class="metric-card">
-        <span class="metric-label">
-          <CreditCard :size="14" class="inline-icon text-success" /> Listas con Pago
-        </span>
-        <span class="metric-val text-success">{{ reporteGeneral.aprobadas_con_pago }}</span>
-      </div>
-      <div class="metric-card">
-        <span class="metric-label">
-          <Send :size="14" class="inline-icon text-primary" /> Remitidas CPD
-        </span>
-        <span class="metric-val text-primary">{{ reporteGeneral.remitidas_cpd }}</span>
-      </div>
-      <div class="metric-card">
-        <span class="metric-label">
-          <CheckCheck :size="14" class="inline-icon text-success" /> Habilitadas CPD
-        </span>
-        <span class="metric-val text-success">{{ reporteGeneral.habilitadas_cpd }}</span>
-      </div>
-    </div>
+    <p v-if="cargando" role="status">Cargando reportes…</p>
+    <p v-if="error" role="alert">{{ error }}</p>
 
-    <!-- DISTRIBUCIÓN PORCENTUAL DINÁMICA CU8 -->
-    <h3 class="mt-4">
-      <PieChart :size="18" class="inline-icon" /> Distribución Porcentual por Estado (ROUND(COUNT(*) * 100.0 / total, 2))
-    </h3>
-    <div class="table-responsive">
-      <table class="data-table">
-        <thead>
-          <tr>
-            <th>Estado</th>
-            <th>Cantidad</th>
-            <th>Porcentaje del Total</th>
-          </tr>
-        </thead>
-        <tbody>
-          <tr v-for="est in reporteEstados" :key="est.estado">
-            <td><span :class="['status-badge', est.estado]">{{ est.estado }}</span></td>
-            <td>{{ est.cantidad }}</td>
-            <td><strong>{{ est.porcentaje }}%</strong></td>
-          </tr>
-        </tbody>
-      </table>
-    </div>
-  </div>
+    <dl v-if="reporteGeneral" class="metricas">
+      <div v-for="[campo, etiqueta] in metricas" :key="campo">
+        <dt>{{ etiqueta }}</dt>
+        <dd>{{ entero.format(reporteGeneral[campo]) }}</dd>
+      </div>
+    </dl>
+
+    <section v-if="reporteEstados !== null" class="distribucion" aria-labelledby="titulo-distribucion">
+      <h2 id="titulo-distribucion">Solicitudes por estado</h2>
+
+      <template v-if="reporteEstados.length">
+        <fieldset class="opciones">
+          <legend>Tipo de gráfico</legend>
+          <div class="controles">
+            <button v-for="[valor, etiqueta] in tipos" :key="valor" type="button" class="btn btn-secondary"
+              :aria-pressed="tipo === valor" @click="tipo = valor">
+              {{ etiqueta }}
+            </button>
+          </div>
+        </fieldset>
+
+        <details>
+          <summary>Filtrar estados ({{ estadosVisibles.length }} de {{ reporteEstados.length }})</summary>
+          <fieldset class="opciones">
+            <legend>Estados incluidos</legend>
+            <div class="controles">
+              <label v-for="estado in reporteEstados" :key="estado.codigo" class="opcion-estado">
+                <input v-model="seleccionados" type="checkbox" :value="estado.codigo" />
+                {{ estado.nombre }}
+              </label>
+            </div>
+            <button type="button" class="btn btn-secondary" @click="seleccionarTodos">Seleccionar todos</button>
+          </fieldset>
+        </details>
+
+        <template v-if="estadosVisibles.length">
+          <div v-if="tipo === 'barras'" class="barras" aria-hidden="true">
+            <div v-for="estado in estadosVisibles" :key="estado.codigo" class="barra">
+              <span>{{ estado.nombre }}</span>
+              <div class="pista">
+                <div class="relleno" :style="{ width: estado.cantidad / maximo * 100 + '%', background: estado.color }"></div>
+              </div>
+              <strong>{{ entero.format(estado.cantidad) }}</strong>
+            </div>
+          </div>
+
+          <div v-else class="circular" :class="{ dona: tipo === 'dona' }" :style="{ background: gradiente }"
+            aria-hidden="true">
+            <strong v-if="tipo === 'dona'">{{ entero.format(totalVisible) }}</strong>
+          </div>
+
+          <div class="tabla">
+            <table>
+              <caption>Distribución de {{ entero.format(totalVisible) }} solicitudes en los estados seleccionados</caption>
+              <thead><tr><th scope="col">Estado</th><th scope="col">Cantidad</th><th scope="col">Porcentaje</th></tr></thead>
+              <tbody>
+                <tr v-for="estado in estadosVisibles" :key="estado.codigo">
+                  <th scope="row">
+                    <span class="muestra" :style="{ background: estado.color }" aria-hidden="true"></span>
+                    {{ estado.nombre }}
+                  </th>
+                  <td>{{ entero.format(estado.cantidad) }}</td>
+                  <td>{{ porcentaje.format(estado.cantidad / totalVisible) }}</td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+        </template>
+        <p v-else role="status">Selecciona al menos un estado para ver el gráfico.</p>
+      </template>
+      <p v-else>No hay solicitudes registradas.</p>
+    </section>
+  </section>
 </template>
 
 <script setup>
-import { ref, onMounted } from 'vue';
-import { 
-  RefreshCw, 
-  Files, 
-  Clock, 
-  CheckCircle2, 
-  CreditCard, 
-  Send, 
-  CheckCheck, 
-  PieChart 
-} from '@lucide/vue';
+import { computed, onMounted, ref } from 'vue';
+import { RefreshCw } from '@lucide/vue';
 import api from '../../services/api';
 
-const reporteGeneral = ref(null);
-const reporteEstados = ref([]);
+const metricas = [
+  ['total_solicitudes', 'Total de solicitudes'],
+  ['pendientes_evaluacion', 'Pendientes de evaluación'],
+  ['aprobadas_direccion', 'Aprobadas por Dirección'],
+  ['aprobadas_con_pago', 'Listas con pago'],
+  ['remitidas_cpd', 'Remitidas a CPD'],
+  ['habilitadas_cpd', 'Habilitadas por CPD'],
+];
+const tipos = [['barras', 'Barras'], ['torta', 'Torta'], ['dona', 'Dona']];
+const colores = ['var(--primary-text)', '#a34c88', '#008477', '#be5800', '#7862bd', '#bf4354',
+  '#457e22', '#217ca3', '#9e6e00', '#73523e', '#747984', '#9362a3'];
+const entero = new Intl.NumberFormat('es-BO');
+const porcentaje = new Intl.NumberFormat('es-BO', { style: 'percent', maximumFractionDigits: 2 });
 
-const cargarReportes = async () => {
+const reporteGeneral = ref(null);
+const reporteEstados = ref(null);
+const seleccionados = ref([]);
+const tipo = ref('barras');
+const cargando = ref(false);
+const error = ref('');
+
+const estadosVisibles = computed(() => (reporteEstados.value ?? []).filter(estado => seleccionados.value.includes(estado.codigo)));
+const totalVisible = computed(() => estadosVisibles.value.reduce((suma, estado) => suma + estado.cantidad, 0));
+const maximo = computed(() => Math.max(1, ...estadosVisibles.value.map(estado => estado.cantidad)));
+const gradiente = computed(() => {
+  let acumulado = 0;
+  const secciones = estadosVisibles.value.map(({ cantidad, color }) => {
+    const inicio = acumulado;
+    acumulado += cantidad;
+
+    return `${color} ${inicio / totalVisible.value * 100}% ${acumulado / totalVisible.value * 100}%`;
+  });
+
+  return `conic-gradient(${secciones.join(', ')})`;
+});
+
+function seleccionarTodos() {
+  seleccionados.value = reporteEstados.value.map(estado => estado.codigo);
+}
+
+async function cargarReportes() {
+  cargando.value = true;
+  error.value = '';
+
   try {
-    const [resG, resE] = await Promise.all([
+    const [general, porEstado] = await Promise.all([
       api.get('/reportes/general'),
-      api.get('/reportes/por-estado')
+      api.get('/reportes/por-estado'),
     ]);
-    reporteGeneral.value = resG.data;
-    reporteEstados.value = resE.data?.estados || [];
+    const anteriores = reporteEstados.value ?? [];
+    const omitidos = new Set(anteriores.filter(estado => !seleccionados.value.includes(estado.codigo)).map(estado => estado.codigo));
+
+    reporteGeneral.value = general.data;
+    reporteEstados.value = [...porEstado.data.estados]
+      .sort((a, b) => a.estado.localeCompare(b.estado, 'es'))
+      .map(({ estado, cantidad }, indice) => ({
+        codigo: estado,
+        nombre: estado.replaceAll('_', ' ').toLocaleLowerCase('es')
+          .replace(/\bcpd\b/g, 'CPD').replace(/^./, letra => letra.toUpperCase()),
+        cantidad: Number(cantidad),
+        color: colores[indice % colores.length],
+      }));
+    seleccionados.value = reporteEstados.value.filter(estado => !omitidos.has(estado.codigo)).map(estado => estado.codigo);
   } catch (e) {
-    console.error(e);
+    if (e.response?.status === 403) {
+      reporteGeneral.value = null;
+      reporteEstados.value = null;
+      error.value = 'Tu cuenta no tiene acceso a Reportes.';
+    } else {
+      error.value = 'No se pudieron cargar los reportes. Intenta actualizar los datos.';
+    }
+  } finally {
+    cargando.value = false;
   }
-};
+}
 
 onMounted(cargarReportes);
 </script>
 
 <style scoped>
-.role-view {
-  background: white;
-  border-radius: 12px;
-  padding: 1.5rem;
-  border: 1px solid #e2e8f0;
-}
-.view-header {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  margin-bottom: 1.5rem;
-}
-.metrics-grid {
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
-  gap: 1rem;
-  margin-bottom: 2rem;
-}
-.metric-card {
-  background: #f8fafc;
-  padding: 1.2rem;
-  border-radius: 8px;
-  border: 1px solid #e2e8f0;
-}
-.metric-label {
-  display: flex;
-  align-items: center;
-  gap: 0.3rem;
-  font-size: 0.8rem;
-  color: #64748b;
-  font-weight: 600;
-}
-.metric-val {
-  display: block;
-  font-size: 1.8rem;
-  font-weight: 800;
-  margin-top: 0.4rem;
-}
-.data-table {
-  width: 100%;
-  border-collapse: collapse;
-}
-.data-table th, .data-table td {
-  padding: 0.85rem 1rem;
-  border-bottom: 1px solid #e2e8f0;
-  text-align: left;
-}
-.status-badge {
-  padding: 0.25rem 0.65rem;
-  border-radius: 20px;
-  font-size: 0.75rem;
-  font-weight: 700;
-}
-.status-badge.ENVIADA { background: #fef3c7; color: #b45309; }
-.status-badge.APROBADA_DIRECCION { background: #dbeafe; color: #1d4ed8; }
-.status-badge.APROBADA { background: #dcfce7; color: #15803d; }
-.status-badge.RECHAZADA_DIRECCION { background: #fee2e2; color: #b91c1c; }
-.status-badge.REMITIDA_A_CPD { background: #f3e8ff; color: #7e22ce; }
-.status-badge.HABILITADA { background: #bbf7d0; color: #166534; }
-.text-warning { color: #d97706; }
-.text-info { color: #0284c7; }
-.text-success { color: #16a34a; }
-.text-primary { color: #2563eb; }
-.inline-icon { vertical-align: middle; }
-.mt-4 { margin-top: 1.5rem; }
-.btn-secondary {
-  background: #64748b;
-  color: white;
-  border: none;
-  padding: 0.6rem 1.2rem;
-  border-radius: 6px;
-  cursor: pointer;
-  display: flex;
-  align-items: center;
-  gap: 0.3rem;
+.reportes { display: grid; gap: 1.25rem; }
+.reportes h1, .reportes h2, .reportes p, .metricas { margin: 0; }
+.encabezado, .controles { display: flex; flex-wrap: wrap; align-items: center; gap: .75rem; }
+.encabezado { justify-content: space-between; }
+.metricas { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 10rem), 1fr)); gap: .75rem; }
+.metricas > div, .distribucion { border: 1px solid var(--border); border-radius: var(--radius-xl); background: var(--surface); }
+.metricas > div { padding: 1rem; }
+.metricas dt { color: var(--text-muted); }
+.metricas dd { margin: 0; font-size: 1.65rem; font-weight: 700; }
+.distribucion { min-width: 0; padding: clamp(.75rem, 3vw, 1.5rem); display: grid; gap: 1rem; }
+.opciones { padding: 0; border: 0; margin: 0; min-width: 0; }
+.opciones legend { padding: 0; margin-bottom: .5rem; font-weight: 600; }
+details .opciones { margin-top: .75rem; }
+details button { margin-top: .75rem; }
+summary { cursor: pointer; min-height: 44px; align-content: center; }
+.opcion-estado { display: inline-flex; align-items: center; gap: .5rem; min-height: 44px; cursor: pointer; }
+.opcion-estado input { accent-color: var(--ink-button); width: 1rem; height: 1rem; }
+.reportes .btn { min-height: 44px; background: var(--surface); color: var(--text); border-color: var(--text-muted); }
+.reportes .btn:hover:enabled { background: var(--surface-alt); }
+.reportes .btn[aria-pressed="true"] { background: var(--ink-button); color: var(--ink-button-text); border-color: var(--ink-button); }
+.reportes .btn:disabled { cursor: default; background: var(--surface-alt); color: var(--text-muted); }
+.reportes :is(button, input, summary):focus-visible { outline: 2px solid var(--text); outline-offset: 2px; }
+.barras { display: grid; gap: .65rem; }
+.barra { display: grid; grid-template-columns: minmax(7rem, 12rem) minmax(2rem, 1fr) auto; align-items: center; gap: .65rem; overflow-wrap: anywhere; }
+.pista { height: 1.25rem; background: var(--surface-alt); border: 1px solid var(--border); border-radius: var(--radius-pill); }
+.relleno { height: 100%; border-radius: inherit; }
+.circular { width: min(100%, 16rem); aspect-ratio: 1; border-radius: 50%; margin-inline: auto; display: grid; place-items: center; }
+.dona strong { display: grid; place-items: center; width: 65%; aspect-ratio: 1; border-radius: 50%; background: var(--surface); font-size: 1.5rem; }
+.tabla { overflow-x: auto; }
+table caption { text-align: start; color: var(--text-muted); padding: .5rem 0; }
+table :is(th, td) { padding: .65rem .5rem; text-align: start; border-bottom: 1px solid var(--border); }
+tbody th { font-weight: 500; }
+.muestra { display: inline-block; inline-size: .85rem; block-size: .85rem; margin-inline-end: .35rem; border-radius: var(--radius-circle); border: 1px solid var(--text-muted); }
+@media (forced-colors: active) {
+  .circular, .relleno, .muestra { forced-color-adjust: none; }
+  .dona strong { background: Canvas; color: CanvasText; }
 }
 </style>
