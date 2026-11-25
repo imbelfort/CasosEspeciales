@@ -296,12 +296,59 @@ class PagoController extends Controller
         ]);
     }
 
+    public function validarPagoManual(Request $request, $idSolicitud)
+    {
+        $user = $request->user();
+        if (!$user->tieneRol('DIRECTOR') && !$user->tieneRol('PERSONAL_ACADEMICO')) {
+            return response()->json(['error' => 'No autorizado para validar pagos manualmente.'], 403);
+        }
+
+        return DB::transaction(function () use ($user, $idSolicitud) {
+            $solicitud = Solicitud::lockForUpdate()->findOrFail($idSolicitud);
+            $pago = PagoTransaccion::where('id_solicitud', $solicitud->id)
+                ->where('estado', 'PAGADO')
+                ->first();
+
+            if ($pago && $solicitud->estado !== 'APROBADA_DIRECCION') {
+                return response()->json(['message' => 'El pago ya estaba confirmado.', 'pago' => $pago]);
+            }
+
+            if ($solicitud->estado !== 'APROBADA_DIRECCION') {
+                return response()->json(['error' => 'La solicitud debe estar aprobada por Dirección para validar el pago.'], 422);
+            }
+
+            $pago ??= PagoTransaccion::create([
+                'id_solicitud' => $solicitud->id,
+                'id_usuario' => $solicitud->id_estudiante,
+                'numero_pago' => 'MANUAL-' . $solicitud->id . '-' . strtoupper(Str::random(6)),
+                'monto' => $solicitud->periodo?->costo_arancel_caso ?? env('PAGOFACIL_COSTO_CASO_ESPECIAL', 10.00),
+                'estado' => 'PAGADO',
+                'pasarela' => 'MANUAL',
+                'fecha_pago' => now(),
+                'metodo_pago_nombre' => 'Validación manual',
+            ]);
+
+            AuditoriaNotificacionService::registrarTransicion(
+                $solicitud,
+                'APROBADA',
+                'VALIDACION_MANUAL_PAGO',
+                $user->id_usuario,
+                "Dirección validó manualmente el arancel (Ref. {$pago->numero_pago})."
+            );
+
+            return response()->json(['message' => 'Pago validado manualmente.', 'pago' => $pago]);
+        });
+    }
+
     /**
      * Transición atómica a pagado y actualización de la solicitud (Pautas 2 y 3 de la Guía)
      */
     protected function confirmarPagoExitoso(PagoTransaccion $pago, array $payload, string $origen)
     {
         DB::transaction(function () use ($pago, $payload, $origen) {
+            $solicitud = $pago->id_solicitud
+                ? Solicitud::lockForUpdate()->find($pago->id_solicitud)
+                : null;
             $pago->refresh();
             if ($pago->estado === 'PAGADO') {
                 return;
@@ -314,26 +361,24 @@ class PagoController extends Controller
             $pago->save();
 
             // Si la transacción está ligada a un trámite de solicitud
-            if ($pago->id_solicitud) {
-                $solicitud = Solicitud::lockForUpdate()->find($pago->id_solicitud);
-                if ($solicitud && $solicitud->estado === 'APROBADA_DIRECCION') {
-                    // Registrar comprobante digital en los archivos
-                    ArchivoSolicitud::create([
-                        'id_solicitud' => $solicitud->id,
-                        'nombre_archivo' => "Comprobante_PagoFacil_QR_{$pago->numero_pago}.json",
-                        'tipo_archivo' => 'COMPROBANTE_PAGO',
-                        'ruta_archivo' => "pagos/{$pago->numero_pago}.json",
-                        'fecha_subida' => now(),
-                    ]);
+            if ($solicitud && $solicitud->estado === 'APROBADA_DIRECCION') {
+                // Registrar comprobante digital en los archivos
+                ArchivoSolicitud::create([
+                    'id_solicitud' => $solicitud->id,
+                    'nombre_archivo' => "Comprobante_PagoFacil_QR_{$pago->numero_pago}.json",
+                    'tipo_archivo' => 'COMPROBANTE_PAGO',
+                    'ruta_archivo' => "pagos/{$pago->numero_pago}.json",
+                    'fecha_subida' => now(),
+                ]);
 
-                    // Transicionar estado a APROBADA (lista para remisión a CPD)
-                    AuditoriaNotificacionService::registrarTransicion(
-                        $solicitud,
-                        'APROBADA',
-                        $pago->id_usuario,
-                        "Pago de arancel completado exitosamente por QR PagoFácil (Ref: {$pago->numero_pago}). Trámite pasa a APROBADA para remisión a CPD."
-                    );
-                }
+                // Transicionar estado a APROBADA (lista para remisión a CPD)
+                AuditoriaNotificacionService::registrarTransicion(
+                    $solicitud,
+                    'APROBADA',
+                    $origen,
+                    $pago->id_usuario,
+                    "Pago de arancel completado exitosamente por QR PagoFácil (Ref: {$pago->numero_pago}). Trámite pasa a APROBADA para remisión a CPD."
+                );
             }
         });
     }

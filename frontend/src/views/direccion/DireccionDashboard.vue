@@ -100,6 +100,9 @@
                 <button v-if="sol.estado === 'ENVIADA' || sol.estado === 'OBSERVADA' || sol.estado === 'SUBSANADA'" @click="abrirEvaluar(sol)" class="btn-action btn-eval">
                   <Scale :size="14" class="inline-icon" /> Evaluar (CU3)
                 </button>
+                <button v-if="sol.estado === 'APROBADA_DIRECCION'" @click="validarPagoManual(sol)" :disabled="validandoPago" class="btn-action btn-eval">
+                  Omitir y validar pago
+                </button>
               </td>
             </tr>
           </tbody>
@@ -503,6 +506,7 @@ const oficios = ref([]);
 const periodos = ref([]);
 const carreras = ref([]);
 const loading = ref(false);
+const validandoPago = ref(false);
 
 const modalEstudiante = ref(false);
 const modalEvaluar = ref(false);
@@ -557,6 +561,20 @@ const cargarDatos = async () => {
     if (carreras.value.length) formEstudiante.value.id_carrera = carreras.value[0].id;
   } catch (e) {
     console.error(e);
+  }
+};
+
+const validarPagoManual = async (solicitud) => {
+  if (!window.confirm(`¿Validar manualmente el arancel del trámite ${solicitud.codigo} y dejarlo listo para remitir a CPD?`)) return;
+
+  validandoPago.value = true;
+  try {
+    await api.post(`/solicitudes/${solicitud.id}/validar-pago-manual`);
+    await cargarDatos();
+  } catch (e) {
+    alert(e.response?.data?.error || e.response?.data?.message || 'Error al validar el pago.');
+  } finally {
+    validandoPago.value = false;
   }
 };
 

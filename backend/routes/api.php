@@ -61,6 +61,7 @@ Route::middleware('auth:sanctum')->group(function () {
 
     // MÓDULO DE COBROS Y PAGOS QR (PagoFácil API v2)
     Route::post('/solicitudes/{id}/pagar-qr', [PagoController::class, 'generarQrSolicitud']);
+    Route::post('/solicitudes/{id}/validar-pago-manual', [PagoController::class, 'validarPagoManual']);
     Route::get('/pagos/{id}/consultar', [PagoController::class, 'consultarEstado']);
     Route::post('/pagos/{id}/simular', [PagoController::class, 'simularPagoDemo']);
     Route::get('/pagos', [PagoController::class, 'listarPagos']);
