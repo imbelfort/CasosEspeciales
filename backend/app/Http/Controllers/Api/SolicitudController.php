@@ -10,6 +10,7 @@ use App\Models\Periodo;
 use App\Models\Solicitud;
 use App\Models\SolicitudGrupo;
 use App\Services\AuditoriaNotificacionService;
+use Dompdf\Dompdf;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Storage;
@@ -366,120 +367,26 @@ class SolicitudController extends Controller
         return response()->json($historico);
     }
 
-    /**
-     * Generar la Carta Oficial de Solicitud en formato imprimible/PDF oficial
-     */
-    public function descargarCarta($id)
+    public function descargarCarta(Request $request, $id)
     {
         $solicitud = Solicitud::with([
             'estudiante.usuario',
             'estudiante.carrera',
             'periodo',
-            'grupos.grupo.materia'
-        ])->findOrFail($id);
+            'grupos.grupo.materia',
+        ])->where('id_estudiante', $request->user()->id_usuario)->findOrFail($id);
 
-        $estudiante = $solicitud->estudiante;
-        $usuario = $estudiante?->usuario;
-        $carrera = $estudiante?->carrera;
+        $html = view('solicitudes.carta', ['solicitud' => $solicitud])->render();
+        $pdf = new Dompdf(['isRemoteEnabled' => false, 'isPhpEnabled' => false]);
+        $pdf->loadHtml($html, 'UTF-8');
+        $pdf->setPaper('letter');
+        $pdf->render();
 
-        $materiasDetalle = '';
-        foreach ($solicitud->grupos as $sg) {
-            $materiasDetalle .= "<tr>
-                <td style='border:1px solid #000; padding:6px;'>{$sg->grupo?->materia?->sigla}</td>
-                <td style='border:1px solid #000; padding:6px;'>{$sg->grupo?->materia?->nombre}</td>
-                <td style='border:1px solid #000; padding:6px; text-align:center;'>Grupo {$sg->grupo?->sigla_grupo}</td>
-                <td style='border:1px solid #000; padding:6px;'>{$sg->motivo}</td>
-            </tr>";
-        }
-
-        $html = "<!DOCTYPE html>
-        <html lang='es'>
-        <head>
-            <meta charset='UTF-8'>
-            <title>Carta Solicitud Caso Especial - {$solicitud->codigo}</title>
-            <style>
-                body { font-family: 'Times New Roman', serif; font-size: 13pt; line-height: 1.5; margin: 40px; color: #000; }
-                .header-inst { text-align: center; border-bottom: 2px solid #000; padding-bottom: 10px; margin-bottom: 25px; }
-                .header-inst h3, .header-inst h4, .header-inst p { margin: 2px; }
-                .codigo-box { text-align: right; font-weight: bold; margin-bottom: 15px; }
-                .destinatario { margin-bottom: 25px; line-height: 1.3; }
-                .cuerpo { text-align: justify; margin-bottom: 25px; text-indent: 40px; }
-                table { width: 100%; border-collapse: collapse; margin: 20px 0; font-size: 11pt; }
-                .firma-box { margin-top: 70px; text-align: center; width: 300px; margin-left: auto; margin-right: auto; border-top: 1px solid #000; padding-top: 5px; }
-                @media print {
-                    body { margin: 20mm; }
-                    .no-print { display: none; }
-                }
-            </style>
-        </head>
-        <body>
-            <div class='no-print' style='background:#f1f5f9; padding:10px 15px; margin-bottom:20px; border-radius:6px; display:flex; justify-content:space-between; align-items:center;'>
-                <span>Vista preliminar de la Carta de Solicitud de Caso Especial (Documento Oficial UAGRM).</span>
-                <button onclick='window.print()' style='background:#0064e0; color:#fff; border:none; padding:8px 16px; border-radius:20px; font-weight:bold; cursor:pointer;'>Imprimir o Guardar en PDF</button>
-            </div>
-
-            <div class='header-inst'>
-                <h3>UNIVERSIDAD AUTÓNOMA GABRIEL RENÉ MORENO</h3>
-                <h4>FACULTAD DE INGENIERÍA EN CIENCIAS DE LA COMPUTACIÓN Y TELECOMUNICACIONES</h4>
-                <p>Dirección de Carrera de {$carrera?->nombre}</p>
-            </div>
-
-            <div class='codigo-box'>
-                Trámite N°: {$solicitud->codigo}<br>
-                Santa Cruz de la Sierra, " . date('d/m/Y', strtotime($solicitud->fecha_solicitud)) . "
-            </div>
-
-            <div class='destinatario'>
-                Señor(a):<br>
-                <strong>DIRECTOR(A) DE CARRERA DE " . strtoupper($carrera?->nombre ?? '') . "</strong><br>
-                FICCT - UAGRM<br>
-                <u>Presente.-</u>
-            </div>
-
-            <div style='text-align: right; font-weight: bold; margin-bottom: 20px;'>
-                Ref.: <u>SOLICITUD DE CASO ESPECIAL ({$solicitud->tipo_caso})</u>
-            </div>
-
-            <div class='cuerpo'>
-                De mi mayor consideración:<br><br>
-                Por medio de la presente, yo, <strong>{$usuario?->nombre} {$usuario?->apellidos}</strong>, con Registro Universitario N° <strong>{$estudiante?->registro_universitario}</strong> y Cédula de Identidad N° <strong>{$usuario?->ci}</strong>, estudiante regular de la carrera de <strong>{$carrera?->nombre}</strong> cursando actualmente el <strong>{$estudiante?->semestre_actual}° Semestre</strong> de la Gestión Académica <strong>{$solicitud->periodo?->gestion}</strong>, me dirijo a su digna autoridad para exponer y solicitar lo siguiente:
-            </div>
-
-            <div class='cuerpo'>
-                " . nl2br(htmlspecialchars($solicitud->motivo)) . "
-            </div>
-
-            <div style='margin-bottom: 10px; font-weight: bold;'>
-                Detalle de Materia(s) y Grupo(s) Solicitado(s):
-            </div>
-
-            <table>
-                <thead>
-                    <tr style='background: #f2f2f2;'>
-                        <th style='border:1px solid #000; padding:6px;'>Sigla</th>
-                        <th style='border:1px solid #000; padding:6px;'>Asignatura</th>
-                        <th style='border:1px solid #000; padding:6px;'>Grupo</th>
-                        <th style='border:1px solid #000; padding:6px;'>Observación / Motivo</th>
-                    </tr>
-                </thead>
-                <tbody>
-                    {$materiasDetalle}
-                </tbody>
-            </table>
-
-            <div class='cuerpo'>
-                Sin otro particular y esperando una respuesta favorable a la presente solicitud para no perjudicar mi normal avance curricular, me despido con las consideraciones más distinguidas.
-            </div>
-
-            <div class='firma-box'>
-                <strong>{$usuario?->nombre} {$usuario?->apellidos}</strong><br>
-                Postulante a Caso Especial<br>
-                R.U.: {$estudiante?->registro_universitario}<br>
-                C.I.: {$usuario?->ci}
-            </div>
-        </body>
-        </html>";
-
-        return response($html)->header('Content-Type', 'text/html');
+        $codigo = preg_replace('/[^a-zA-Z0-9_-]/', '-', $solicitud->codigo);
+        return response($pdf->output(), 200, [
+            'Content-Type' => 'application/pdf',
+            'Content-Disposition' => 'attachment; filename="Carta-'.$codigo.'.pdf"',
+            'Cache-Control' => 'private, no-store',
+        ]);
     }
 }

@@ -264,8 +264,8 @@ class DatabaseSeeder extends Seeder
             [
                 'id_estudiante' => $idEst1,
                 'id_periodo' => $periodoId,
-                'tipo_caso' => 'PARALELO_LLENO',
-                'motivo' => 'Solicitud de sobrecupo en INF310 paralelo lleno para regularizar avance de semestre.',
+                'tipo_caso' => 'Materia sin cupo',
+                'motivo' => 'Solicito inscribirme en INF310 porque no hay cupos disponibles y necesito cursar la materia para avanzar de semestre.',
                 'estado' => 'ENVIADA',
                 'fecha_solicitud' => now()->subDays(2),
             ]
@@ -273,7 +273,7 @@ class DatabaseSeeder extends Seeder
         $sol1Id = DB::table('solicitud')->where('codigo', 'CE-2026-0001')->value('id');
         DB::table('solicitud_grupo')->updateOrInsert(
             ['id_solicitud' => $sol1Id, 'id_grupo' => 3],
-            ['motivo' => 'Sobrecupo solicitado en paralelo SC', 'estado' => 'PENDIENTE']
+            ['motivo' => 'Inscripción solicitada en el grupo SC por falta de cupo', 'estado' => 'PENDIENTE']
         );
 
         // Solicitud 2: APROBADA_DIRECCION (Lista para que la estudiante suba comprobante de pago)

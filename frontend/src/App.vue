@@ -1,42 +1,41 @@
 <template>
   <div class="app-container">
-    <Navbar :usuario="usuario" @logout="onLogout" />
-    
-    <!-- Navegación por rol -->
-    <div v-if="usuario" class="role-nav-bar">
+    <Navbar :usuario="usuario" @logout="onLogout">
+      <template v-if="usuario" #navegacion>
       <div class="nav-links">
         <!-- VISTAS DEL ESTUDIANTE -->
         <template v-if="rolActual === 'ESTUDIANTE'">
           <router-link to="/estudiante" class="nav-link" :class="{ active: $route.path === '/estudiante' }">
-            <FileText :size="16" class="nav-icon" /> Mis Solicitudes (CU2)
+            Mis solicitudes
           </router-link>
           <router-link to="/estudiante/historial" class="nav-link" :class="{ active: $route.path === '/estudiante/historial' }">
-            <History :size="16" class="nav-icon" /> Historial de Casos (CU7)
+            Historial de casos
           </router-link>
         </template>
 
         <!-- VISTAS DE DIRECCIÓN Y PERSONAL ACADÉMICO -->
         <template v-if="rolActual === 'DIRECTOR' || rolActual === 'PERSONAL_ACADEMICO'">
           <router-link to="/direccion" class="nav-link">
-            <GraduationCap :size="16" class="nav-icon" /> Dirección de Carrera (CU3/CU4/CU5)
+            Dirección de Carrera
           </router-link>
         </template>
 
         <!-- VISTAS DE CPD -->
         <template v-if="rolActual === 'CPD'">
           <router-link to="/cpd" class="nav-link">
-            <Server :size="16" class="nav-icon" /> Procesamiento CPD (CU6)
+            Procesamiento CPD
           </router-link>
         </template>
         <router-link v-if="usuario.roles?.some(rol => ['CPD', 'DIRECTOR', 'PERSONAL_ACADEMICO'].includes(rol.nombre))" to="/reportes" class="nav-link">
-          <BarChart3 :size="16" class="nav-icon" /> Reportes y Estadísticas (CU8)
+          Reportes y estadísticas
         </router-link>
         <router-link v-if="usuario.roles?.some(rol => rol.nombre === 'CPD')" to="/cpd/bitacora" class="nav-link">
-          <History :size="16" class="nav-icon" /> Bitácora CPD
+          Bitácora CPD
         </router-link>
       </div>
 
-    </div>
+      </template>
+    </Navbar>
 
     <main class="content-wrapper">
       <router-view :usuario="usuario" @auth-success="onAuthSuccess" />
@@ -53,13 +52,6 @@
 
 <script setup>
 import { ref, onMounted, computed } from 'vue';
-import { 
-  FileText, 
-  History, 
-  GraduationCap, 
-  Server, 
-  BarChart3 
-} from '@lucide/vue';
 import Navbar from './components/layout/Navbar.vue';
 import ViewCounter from './components/common/ViewCounter.vue';
 import api from './services/api';
@@ -102,27 +94,18 @@ onMounted(async () => {
   color: var(--text);
   transition: background-color 0.25s ease, color 0.25s ease;
 }
-.role-nav-bar {
-  background: var(--surface);
-  border-bottom: 1px solid var(--border);
-  padding: 0.45rem 1.8rem;
-  display: flex;
-  align-items: center;
-  flex-wrap: wrap;
-  gap: 0.8rem;
-}
 .nav-links {
   display: flex;
-  gap: 0.4rem;
+  justify-content: center;
+  gap: .25rem;
   flex-wrap: wrap;
 }
 .nav-link {
   display: flex;
   align-items: center;
-  gap: 0.4rem;
-  padding: 0.45rem 0.8rem;
+  padding: .6rem .85rem;
   text-decoration: none;
-  color: var(--text-muted);
+  color: var(--text);
   font-weight: 600;
   border-radius: var(--radius-pill, 100px);
   transition: all 0.15s ease;
@@ -135,15 +118,16 @@ onMounted(async () => {
   color: var(--text);
 }
 .nav-link.router-link-exact-active, .nav-link.active {
-  background: var(--primary);
-  color: var(--on-primary);
+  background: var(--primary-subtle);
+  color: var(--primary-text);
 }
 .nav-link:focus-visible {
   outline: 2px solid var(--text);
   outline-offset: 2px;
 }
-.nav-icon {
-  flex-shrink: 0;
+@media (max-width: 48rem) {
+  .nav-links { flex-direction: column; }
+  .nav-link { min-height: 2.75rem; }
 }
 .app-footer {
   background: var(--surface);

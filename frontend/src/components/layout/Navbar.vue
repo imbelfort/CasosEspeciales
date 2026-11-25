@@ -1,13 +1,24 @@
 ﻿<template>
-  <header class="cabecera">
+  <header ref="cabecera" class="cabecera" @keydown.esc="cerrarNavegacion">
     <router-link to="/" class="marca">
       <span class="marca-icono" aria-hidden="true"><GraduationCap :size="20" /></span>
       <span>Casos Especiales <small>FICCT · UAGRM</small></span>
     </router-link>
 
+    <nav v-if="$slots.navegacion" id="navegacion-principal" class="navegacion" :class="{ abierta: navegacionAbierta }"
+      aria-label="Navegación principal" @click="alNavegar">
+      <slot name="navegacion" />
+    </nav>
+
     <BuscadorAcciones :usuario="usuario" />
 
     <div ref="controles" class="controles" @keydown.esc="cerrarConEscape" @focusout="alSalir">
+      <button v-if="$slots.navegacion" ref="botonMenu" type="button" class="icono boton-menu"
+        :aria-expanded="navegacionAbierta" aria-controls="navegacion-principal"
+        :aria-label="navegacionAbierta ? 'Cerrar menú' : 'Abrir menú'" @click="alternarNavegacion">
+        <X v-if="navegacionAbierta" :size="20" aria-hidden="true" />
+        <Menu v-else :size="20" aria-hidden="true" />
+      </button>
       <NotificacionesMenu v-if="usuario?.roles?.[0]?.nombre === 'ESTUDIANTE'"
         :key="usuario.id_usuario" :usuario="usuario" />
       <details name="panel-cabecera">
@@ -66,9 +77,9 @@
 </template>
 
 <script setup>
-import { onMounted, onUnmounted, ref } from 'vue';
+import { nextTick, onMounted, onUnmounted, ref, watch } from 'vue';
 import { useRouter } from 'vue-router';
-import { Contrast, GraduationCap, LogOut, Palette, SlidersHorizontal, SunMoon, Type, UserRound } from '@lucide/vue';
+import { Contrast, GraduationCap, LogOut, Menu, Palette, SlidersHorizontal, SunMoon, Type, UserRound, X } from '@lucide/vue';
 import { useTheme } from '../../services/useTheme';
 import BuscadorAcciones from './BuscadorAcciones.vue';
 import NotificacionesMenu from './NotificacionesMenu.vue';
@@ -77,7 +88,10 @@ import api from '../../services/api';
 defineProps({ usuario: Object });
 const emit = defineEmits(['logout']);
 const router = useRouter();
+const cabecera = ref(null);
 const controles = ref(null);
+const botonMenu = ref(null);
+const navegacionAbierta = ref(false);
 const {
   tema, modoOscuro, altoContraste, escalaFuente, setTema, setModoOscuro,
   toggleAltoContraste, setEscalaFuente,
@@ -93,8 +107,27 @@ function cerrarConEscape(evento) {
   if (!abierto) return;
 
   evento.preventDefault();
+  evento.stopPropagation();
   abierto.open = false;
   abierto.querySelector('summary').focus();
+}
+
+function alternarNavegacion() {
+  navegacionAbierta.value = !navegacionAbierta.value;
+  if (navegacionAbierta.value) {
+    nextTick(() => cabecera.value?.querySelector('.navegacion a')?.focus());
+  }
+}
+
+function cerrarNavegacion(evento) {
+  if (!navegacionAbierta.value) return;
+  evento.preventDefault();
+  navegacionAbierta.value = false;
+  botonMenu.value?.focus();
+}
+
+function alNavegar(evento) {
+  if (evento.target.closest('a')) navegacionAbierta.value = false;
 }
 
 function alSalir(evento) {
@@ -103,8 +136,10 @@ function alSalir(evento) {
 
 function alPulsarFuera(evento) {
   if (!controles.value?.contains(evento.target)) cerrarPanel();
+  if (!evento.target.closest('.navegacion, .boton-menu')) navegacionAbierta.value = false;
 }
 
+watch(() => router.currentRoute.value.path, () => { navegacionAbierta.value = false; });
 onMounted(() => document.addEventListener('pointerdown', alPulsarFuera));
 onUnmounted(() => document.removeEventListener('pointerdown', alPulsarFuera));
 
@@ -125,28 +160,33 @@ async function logout() {
   top: 0;
   z-index: 50;
   display: grid;
-  grid-template-columns: minmax(max-content, 1fr) minmax(0, 32rem) minmax(max-content, 1fr);
+  grid-template-columns: max-content minmax(0, 1fr) minmax(10rem, 17rem) auto;
+  grid-template-areas: "marca navegacion buscador controles";
   align-items: center;
-  gap: .75rem 1.5rem;
-  padding: .65rem clamp(.75rem, 3vw, 2rem);
+  gap: .75rem clamp(.65rem, 1.7vw, 1.5rem);
+  padding: .75rem clamp(.75rem, 3vw, 2.5rem);
   background: var(--surface);
   border-bottom: 1px solid var(--border);
 }
-.marca { display: inline-flex; align-items: center; justify-self: start; gap: .55rem; color: var(--text); text-decoration: none; font-weight: 700; line-height: 1.2; }
-.marca-icono, .controles :deep(.icono) { display: grid; place-items: center; inline-size: 2.25rem; block-size: 2.25rem; flex-shrink: 0; }
-.marca-icono { background: var(--primary); color: var(--on-primary); border-radius: var(--radius-md); }
+.marca { grid-area: marca; display: inline-flex; align-items: center; justify-self: start; gap: .55rem; color: var(--text); text-decoration: none; font-weight: 700; line-height: 1.2; }
+.marca-icono, .controles :deep(.icono) { display: grid; place-items: center; inline-size: 2.5rem; block-size: 2.5rem; flex-shrink: 0; }
+.marca-icono { color: var(--primary-text); }
 .marca small { display: block; margin-top: .15rem; color: var(--text-muted); font-size: .72rem; font-weight: 500; }
-.controles { position: relative; z-index: 2; justify-self: end; display: flex; gap: .45rem; }
+.navegacion { grid-area: navegacion; }
+.buscador-acciones { grid-area: buscador; }
+.buscador-acciones :deep(.campo-busqueda) { min-height: 2.5rem; border-color: var(--border); }
+.controles { grid-area: controles; position: relative; z-index: 2; justify-self: end; display: flex; gap: .35rem; }
 .controles :deep(.icono) {
   color: var(--text);
-  background: var(--surface-alt);
+  background: var(--surface);
   border: 1px solid var(--border);
   border-radius: var(--radius-circle);
   cursor: pointer;
   list-style: none;
 }
 .controles :deep(.icono::-webkit-details-marker) { display: none; }
-.icono-cuenta, .controles :deep(details[open] > .icono) { color: var(--primary-text); background: var(--primary-subtle); border-color: var(--primary-text); }
+.controles :deep(details[open] > .icono) { color: var(--primary-text); background: var(--primary-subtle); border-color: var(--primary-text); }
+.controles .boton-menu { display: none; padding: 0; }
 .controles :deep(.icono:hover) { border-color: var(--primary-text); }
 .cabecera :deep(:is(a, summary, button, input, select):focus-visible) { outline: 2px solid var(--text); outline-offset: 2px; }
 .controles :deep(.panel) {
@@ -177,10 +217,31 @@ async function logout() {
 .cuenta button { justify-self: start; }
 .rol { font-size: .75rem; color: var(--text-muted); }
 
-@media (max-width: 43rem) {
-  .cabecera { grid-template-columns: minmax(0, 1fr) auto; gap: .55rem .65rem; }
-  .buscador-acciones { grid-area: 2 / 1 / 3 / -1; }
-  .controles { grid-area: 1 / 2; }
+@media (max-width: 48rem) {
+  .cabecera {
+    grid-template-columns: minmax(0, 1fr) auto;
+    grid-template-areas: "marca controles" "buscador buscador";
+    gap: .55rem .65rem;
+  }
+  .controles .boton-menu { display: grid; }
+  .navegacion {
+    display: none;
+    position: absolute;
+    inset: 100% 0 auto;
+    z-index: 3;
+    max-height: 65dvh;
+    overflow: auto;
+    padding: .75rem;
+    background: var(--surface);
+    border-bottom: 1px solid var(--border);
+    box-shadow: 0 8px 16px var(--shadow-color);
+  }
+  .navegacion.abierta { display: block; }
   .marca { min-width: 0; font-size: .88rem; }
+  .marca-icono { inline-size: 1.5rem; }
+}
+@media (max-width: 22rem) {
+  .controles { gap: .2rem; }
+  .controles :deep(.icono) { inline-size: 2.25rem; block-size: 2.25rem; }
 }
 </style>

@@ -63,10 +63,11 @@
                 <FileSearch :size="14" class="inline-icon" /> Expediente
               </button>
 
-              <!-- Descargar Carta Oficial en PDF lista para firmar o imprimir -->
-              <a :href="getCartaPdfUrl(sol)" target="_blank" class="btn-action btn-pdf" title="Descargar o imprimir Carta Oficial en PDF">
-                <Printer :size="14" class="inline-icon" /> Carta PDF
-              </a>
+              <button type="button" class="btn-action btn-pdf" :disabled="descargasCarta.has(sol.id)"
+                title="Descargar la carta de solicitud para firmarla" @click="descargarCarta(sol)">
+                <Download :size="14" class="inline-icon" aria-hidden="true" />
+                {{ descargasCarta.has(sol.id) ? 'Descargando…' : 'Descargar carta PDF' }}
+              </button>
 
               <!-- Subsanar respaldo SOLO si la solicitud está OBSERVADA por Dirección -->
               <button v-if="sol.estado === 'OBSERVADA'" @click="abrirAdjuntarRespaldo(sol)" class="btn-action btn-file" title="Subir nuevo respaldo solicitado en la observación">
@@ -380,7 +381,7 @@ import {
   Clock,
   CheckCircle2,
   Server,
-  Printer,
+  Download,
   Trash2,
   AlertCircle,
   GraduationCap
@@ -408,9 +409,28 @@ const historicoMap = computed(() => {
   return map;
 });
 
-const getCartaPdfUrl = (sol) => {
-  return `${api.defaults.baseURL || 'http://localhost:8000/api'}/solicitudes/${sol.id}/carta-pdf`;
-};
+const descargasCarta = ref(new Set());
+
+async function descargarCarta(sol) {
+  descargasCarta.value.add(sol.id);
+  try {
+    const { data } = await api.get(`/solicitudes/${sol.id}/carta-pdf`, {
+      responseType: 'blob',
+    });
+    const url = URL.createObjectURL(data);
+    const enlace = document.createElement('a');
+    enlace.href = url;
+    enlace.download = `Carta-${sol.codigo.replace(/[^a-zA-Z0-9_-]/g, '-')}.pdf`;
+    document.body.append(enlace);
+    enlace.click();
+    enlace.remove();
+    setTimeout(() => URL.revokeObjectURL(url), 1000);
+  } catch (error) {
+    if (error.response?.status !== 401) alert('No se pudo descargar la carta. Vuelve a intentarlo.');
+  } finally {
+    descargasCarta.value.delete(sol.id);
+  }
+}
 
 const materiaSeleccionadaMalla = ref(null);
 
