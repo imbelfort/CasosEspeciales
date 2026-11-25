@@ -48,7 +48,7 @@
 
     <footer class="app-footer">
       <div class="footer-content">
-        <p class="footer-brand"><strong><a href="http://localhost:5173/">Casos Especiales</a> - grupo 26</strong></p>
+        <p class="footer-brand"><strong><a href="http://localhost:5173/">Casos Especiales</a></strong></p>
         <ViewCounter />
       </div>
     </footer>
