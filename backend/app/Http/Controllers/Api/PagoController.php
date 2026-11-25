@@ -3,10 +3,10 @@
 namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
-use App\Models\ArchivoSolicitud;
 use App\Models\PagoTransaccion;
 use App\Models\Solicitud;
 use App\Services\AuditoriaNotificacionService;
+use App\Services\ConfirmacionPagoService;
 use App\Services\PagoFacilService;
 use Carbon\Carbon;
 use Exception;
@@ -29,9 +29,13 @@ class PagoController extends Controller
      */
     public function generarQrSolicitud(Request $request, $idSolicitud)
     {
-        $user = $request->user();
+        return DB::transaction(fn () => $this->generarQrConBloqueo($request, $idSolicitud));
+    }
 
-        $solicitud = Solicitud::with(['estudiante.usuario'])->findOrFail($idSolicitud);
+    private function generarQrConBloqueo(Request $request, $idSolicitud)
+    {
+        $user = $request->user();
+        $solicitud = Solicitud::with(['estudiante.usuario'])->lockForUpdate()->findOrFail($idSolicitud);
 
         // Validación de pertenencia / permisos
         if ($solicitud->id_estudiante !== $user->id_usuario && !$user->tieneRol('DIRECTOR') && !$user->tieneRol('PERSONAL_ACADEMICO')) {
@@ -57,7 +61,12 @@ class PagoController extends Controller
         }
 
         // Si ya hay un QR pendiente y no ha expirado, reutilizarlo
+        if (PagoTransaccion::where('id_solicitud', $solicitud->id)->where('pasarela', 'STRIPE')->where('estado', 'PENDIENTE')->exists()) {
+            return response()->json(['error' => 'Hay un pago con tarjeta pendiente para esta solicitud.'], 409);
+        }
+
         $qrPendiente = PagoTransaccion::where('id_solicitud', $solicitud->id)
+            ->where('pasarela', 'PAGOFACIL_QR')
             ->where('estado', 'PENDIENTE')
             ->where(function ($query) {
                 $query->whereNull('fecha_expiracion')
@@ -182,7 +191,7 @@ class PagoController extends Controller
      */
     public function consultarEstado($idPago)
     {
-        $pago = PagoTransaccion::with('solicitud')->findOrFail($idPago);
+        $pago = PagoTransaccion::with('solicitud')->where('pasarela', 'PAGOFACIL_QR')->findOrFail($idPago);
 
         if ($pago->estado === 'PAGADO') {
             return response()->json([
@@ -234,7 +243,7 @@ class PagoController extends Controller
             ], 400);
         }
 
-        $pago = PagoTransaccion::where('numero_pago', $pedidoId)->first();
+        $pago = PagoTransaccion::where('pasarela', 'PAGOFACIL_QR')->where('numero_pago', $pedidoId)->first();
 
         if (!$pago) {
             return response()->json([
@@ -273,7 +282,8 @@ class PagoController extends Controller
     public function simularPagoDemo(Request $request, $idPago)
     {
         $user = $request->user();
-        $pago = PagoTransaccion::findOrFail($idPago);
+        abort_unless(app()->environment('local', 'testing') && !$this->pagoFacilService->tieneCredenciales(), 403);
+        $pago = PagoTransaccion::where('pasarela', 'PAGOFACIL_QR')->where('id_usuario', $user->id_usuario)->findOrFail($idPago);
 
         if ($pago->estado === 'PAGADO') {
             return response()->json(['message' => 'El pago ya estaba confirmado.', 'pago' => $pago]);
@@ -317,6 +327,10 @@ class PagoController extends Controller
                 return response()->json(['error' => 'La solicitud debe estar aprobada por Dirección para validar el pago.'], 422);
             }
 
+            if (PagoTransaccion::where('id_solicitud', $solicitud->id)->where('pasarela', 'STRIPE')->where('estado', 'PENDIENTE')->exists()) {
+                return response()->json(['error' => 'Hay un pago con tarjeta pendiente para esta solicitud.'], 409);
+            }
+
             $pago ??= PagoTransaccion::create([
                 'id_solicitud' => $solicitud->id,
                 'id_usuario' => $solicitud->id_estudiante,
@@ -345,46 +359,9 @@ class PagoController extends Controller
     /**
      * Transición atómica a pagado y actualización de la solicitud (Pautas 2 y 3 de la Guía)
      */
-    protected function confirmarPagoExitoso(PagoTransaccion $pago, array $payload, string $origen)
+    protected function confirmarPagoExitoso(PagoTransaccion $pago, array $payload, string $origen): void
     {
-        DB::transaction(function () use ($pago, $payload, $origen) {
-            $solicitud = $pago->id_solicitud
-                ? Solicitud::lockForUpdate()->find($pago->id_solicitud)
-                : null;
-            $pago->refresh();
-            if ($pago->estado === 'PAGADO') {
-                return;
-            }
-
-            $pago->estado = 'PAGADO';
-            $pago->fecha_pago = now();
-            $pago->payload_callback = $payload;
-            $pago->metodo_pago_nombre = $payload['MetodoPago'] ?? ($payload['paymentMethodName'] ?? 'QR PagoFácil');
-            $pago->save();
-
-            // Si la transacción está ligada a un trámite de solicitud
-            if ($solicitud && $solicitud->estado === 'APROBADA_DIRECCION') {
-                // Registrar comprobante digital en los archivos
-                ArchivoSolicitud::create([
-                    'id_solicitud' => $solicitud->id,
-                    'nombre_archivo' => "Comprobante_PagoFacil_QR_{$pago->numero_pago}.json",
-                    'tipo_archivo' => 'COMPROBANTE_PAGO',
-                    'ruta_archivo' => "pagos/{$pago->numero_pago}.json",
-                    'fecha_subida' => now(),
-                ]);
-
-                // Transicionar estado a APROBADA (lista para remisión a CPD)
-                AuditoriaNotificacionService::registrarTransicion(
-                    $solicitud,
-                    'APROBADA',
-                    $origen,
-                    $pago->id_usuario,
-                    "Pago de arancel completado exitosamente por QR PagoFácil (Ref: {$pago->numero_pago}). Trámite pasa a APROBADA para remisión a CPD.",
-                    "Solicitud aprobada - {$solicitud->codigo}",
-                    'Se confirmó tu pago por QR. Tu solicitud está aprobada y queda pendiente de remisión a CPD.'
-                );
-            }
-        });
+        app(ConfirmacionPagoService::class)->confirmar($pago, $payload, $origen);
     }
 
     /**
@@ -397,6 +374,8 @@ class PagoController extends Controller
 
         if ($user->tieneRol('ESTUDIANTE')) {
             $query->where('id_usuario', $user->id_usuario);
+        } elseif (!$user->tieneRol('CPD')) {
+            $query->where('pasarela', '<>', 'STRIPE');
         }
 
         if ($request->has('id_solicitud')) {

@@ -10,6 +10,7 @@ use App\Http\Controllers\Api\NotificacionController;
 use App\Http\Controllers\Api\PushSubscriptionController;
 use App\Http\Controllers\Api\OficioCpdController;
 use App\Http\Controllers\Api\PagoController;
+use App\Http\Controllers\Api\PagoStripeController;
 use App\Http\Controllers\Api\ReporteController;
 use App\Http\Controllers\Api\SolicitudController;
 use App\Http\Controllers\Api\UsuarioAdminController;
@@ -21,6 +22,7 @@ Route::post('/auth/login', [AuthController::class, 'login'])->middleware(Registr
 
 // Callback público de PagoFácil QR (Webhook de notificación)
 Route::post('/pagos/pagofacil/callback', [PagoController::class, 'callbackWebhook']);
+Route::post('/pagos/stripe/webhook', [PagoStripeController::class, 'webhook']);
 
 Route::get('/catalogos/carreras', [CatalogoController::class, 'carreras']);
 Route::get('/catalogos/periodos', [CatalogoController::class, 'periodos']);
@@ -64,6 +66,10 @@ Route::middleware([RegistrarBitacoraCpd::class, 'auth:sanctum'])->group(function
 
     // MÓDULO DE COBROS Y PAGOS QR (PagoFácil API v2)
     Route::post('/solicitudes/{id}/pagar-qr', [PagoController::class, 'generarQrSolicitud']);
+    Route::get('/pagos/stripe/config', [PagoStripeController::class, 'configuracion']);
+    Route::post('/solicitudes/{id}/pagar-stripe', [PagoStripeController::class, 'iniciar'])->middleware('throttle:15,1');
+    Route::get('/pagos/stripe/{id}', [PagoStripeController::class, 'estado']);
+    Route::delete('/pagos/stripe/{id}', [PagoStripeController::class, 'cancelar'])->middleware('throttle:15,1');
     Route::post('/solicitudes/{id}/validar-pago-manual', [PagoController::class, 'validarPagoManual']);
     Route::get('/pagos/{id}/consultar', [PagoController::class, 'consultarEstado']);
     Route::post('/pagos/{id}/simular', [PagoController::class, 'simularPagoDemo']);
@@ -71,6 +77,7 @@ Route::middleware([RegistrarBitacoraCpd::class, 'auth:sanctum'])->group(function
 
     // CU6: CPD
     Route::get('/cpd/pendientes', [CpdController::class, 'pendientes']);
+    Route::get('/cpd/pagos-stripe', [CpdController::class, 'pagosStripe']);
     Route::get('/cpd/bitacora', [BitacoraCpdController::class, 'index']);
     Route::post('/cpd/responder', [CpdController::class, 'responder']);
     Route::put('/cpd/periodo/{id}/config', [CpdController::class, 'actualizarPeriodoConfig']);

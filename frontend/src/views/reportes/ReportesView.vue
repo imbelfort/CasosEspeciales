@@ -1,38 +1,48 @@
 ﻿<template>
   <section class="reportes" :aria-busy="cargando">
     <header class="encabezado">
-      <h1>Reportes y estadísticas</h1>
-      <button type="button" class="btn btn-secondary" :disabled="cargando" @click="cargarReportes">
-        <RefreshCw :size="16" aria-hidden="true" /> Actualizar datos
+      <div>
+        <h1>Reportes y estadísticas</h1>
+        <p>Seguimiento de solicitudes de casos especiales</p>
+      </div>
+      <button type="button" class="btn btn-secondary actualizar" :disabled="cargando" @click="cargarReportes">
+        <RefreshCw :size="16" aria-hidden="true" /> {{ cargando ? 'Actualizando…' : 'Actualizar' }}
       </button>
     </header>
 
-    <p v-if="cargando" role="status">Cargando reportes…</p>
-    <p v-if="error" role="alert">{{ error }}</p>
+    <p v-if="cargando && !reporteGeneral" class="mensaje" role="status">Cargando reportes…</p>
+    <p v-if="error" class="mensaje error" role="alert">{{ error }}</p>
 
     <dl v-if="reporteGeneral" class="metricas">
-      <div v-for="[campo, etiqueta] in metricas" :key="campo">
+      <div v-for="[campo, etiqueta, icono, tono] in metricas" :key="campo" class="metrica" :class="tono">
+        <component :is="icono" class="metrica-icono" :size="36" :stroke-width="1.8" aria-hidden="true" />
         <dt>{{ etiqueta }}</dt>
         <dd>{{ entero.format(reporteGeneral[campo]) }}</dd>
       </div>
     </dl>
 
     <section v-if="reporteEstados !== null" class="distribucion" aria-labelledby="titulo-distribucion">
-      <h2 id="titulo-distribucion">Solicitudes por estado</h2>
+      <div class="distribucion-cabecera">
+        <div>
+          <h2 id="titulo-distribucion">Solicitudes por estado</h2>
+          <p v-if="reporteEstados.length">{{ entero.format(totalVisible) }} solicitudes en la selección</p>
+        </div>
+
+        <div v-if="reporteEstados.length" class="segmentos" role="group" aria-label="Tipo de gráfico">
+          <button v-for="[valor, etiqueta] in tipos" :key="valor" type="button" class="segmento"
+            :aria-pressed="tipo === valor" @click="tipo = valor">
+            {{ etiqueta }}
+          </button>
+        </div>
+      </div>
 
       <template v-if="reporteEstados.length">
-        <fieldset class="opciones">
-          <legend>Tipo de gráfico</legend>
-          <div class="controles">
-            <button v-for="[valor, etiqueta] in tipos" :key="valor" type="button" class="btn btn-secondary"
-              :aria-pressed="tipo === valor" @click="tipo = valor">
-              {{ etiqueta }}
-            </button>
-          </div>
-        </fieldset>
-
-        <details>
-          <summary>Filtrar estados ({{ estadosVisibles.length }} de {{ reporteEstados.length }})</summary>
+        <details class="filtros">
+          <summary>
+            <ListFilter :size="16" aria-hidden="true" /> Filtrar estados
+            <span>{{ estadosVisibles.length }}/{{ reporteEstados.length }}</span>
+            <ChevronDown :size="15" class="flecha" aria-hidden="true" />
+          </summary>
           <fieldset class="opciones">
             <legend>Estados incluidos</legend>
             <div class="controles">
@@ -45,25 +55,28 @@
           </fieldset>
         </details>
 
-        <template v-if="estadosVisibles.length">
-          <div v-if="tipo === 'barras'" class="barras" aria-hidden="true">
-            <div v-for="estado in estadosVisibles" :key="estado.codigo" class="barra">
-              <span>{{ estado.nombre }}</span>
-              <div class="pista">
-                <div class="relleno" :style="{ width: estado.cantidad / maximo * 100 + '%', background: estado.color }"></div>
+        <div v-if="estadosVisibles.length" class="desglose">
+          <div class="grafico">
+            <div v-if="tipo === 'barras'" class="barras" aria-hidden="true">
+              <div v-for="estado in estadosVisibles" :key="estado.codigo" class="barra">
+                <span>{{ estado.nombre }}</span>
+                <strong>{{ entero.format(estado.cantidad) }}</strong>
+                <div class="pista">
+                  <div class="relleno" :style="{ width: estado.cantidad / maximo * 100 + '%', background: estado.color }"></div>
+                </div>
               </div>
-              <strong>{{ entero.format(estado.cantidad) }}</strong>
             </div>
-          </div>
 
-          <div v-else class="circular" :class="{ dona: tipo === 'dona' }" :style="{ background: gradiente }"
-            aria-hidden="true">
-            <strong v-if="tipo === 'dona'">{{ entero.format(totalVisible) }}</strong>
+            <div v-else class="circular" :style="{ background: gradiente }" aria-hidden="true">
+              <div v-if="tipo === 'dona'" class="dona-centro">
+                <strong>{{ entero.format(totalVisible) }}</strong><small>Solicitudes</small>
+              </div>
+            </div>
           </div>
 
           <div class="tabla">
             <table>
-              <caption>Distribución de {{ entero.format(totalVisible) }} solicitudes en los estados seleccionados</caption>
+              <caption>Detalle por estado</caption>
               <thead><tr><th scope="col">Estado</th><th scope="col">Cantidad</th><th scope="col">Porcentaje</th></tr></thead>
               <tbody>
                 <tr v-for="estado in estadosVisibles" :key="estado.codigo">
@@ -72,13 +85,13 @@
                     {{ estado.nombre }}
                   </th>
                   <td>{{ entero.format(estado.cantidad) }}</td>
-                  <td>{{ porcentaje.format(estado.cantidad / totalVisible) }}</td>
+                  <td>{{ porcentaje.format(totalVisible ? estado.cantidad / totalVisible : 0) }}</td>
                 </tr>
               </tbody>
             </table>
           </div>
-        </template>
-        <p v-else role="status">Selecciona al menos un estado para ver el gráfico.</p>
+        </div>
+        <p v-else class="mensaje" role="status">Selecciona al menos un estado para ver el gráfico.</p>
       </template>
       <p v-else>No hay solicitudes registradas.</p>
     </section>
@@ -87,16 +100,16 @@
 
 <script setup>
 import { computed, onMounted, ref } from 'vue';
-import { RefreshCw } from '@lucide/vue';
+import { CheckCircle2, ChevronDown, CircleCheck, Clock3, FileText, ListFilter, RefreshCw, Send, Wallet } from '@lucide/vue';
 import api from '../../services/api';
 
 const metricas = [
-  ['total_solicitudes', 'Total de solicitudes'],
-  ['pendientes_evaluacion', 'Pendientes de evaluación'],
-  ['aprobadas_direccion', 'Aprobadas por Dirección'],
-  ['aprobadas_con_pago', 'Listas con pago'],
-  ['remitidas_cpd', 'Remitidas a CPD'],
-  ['habilitadas_cpd', 'Habilitadas por CPD'],
+  ['total_solicitudes', 'Total de solicitudes', FileText, 'principal'],
+  ['pendientes_evaluacion', 'Pendientes de evaluación', Clock3, 'pendiente'],
+  ['aprobadas_direccion', 'Aprobadas por Dirección', CircleCheck, 'resuelta'],
+  ['aprobadas_con_pago', 'Listas con pago', Wallet, 'resuelta'],
+  ['remitidas_cpd', 'Remitidas a CPD', Send, 'principal'],
+  ['habilitadas_cpd', 'Habilitadas por CPD', CheckCircle2, 'resuelta'],
 ];
 const tipos = [['barras', 'Barras'], ['torta', 'Torta'], ['dona', 'Dona']];
 const colores = ['var(--primary-text)', '#a34c88', '#008477', '#be5800', '#7862bd', '#bf4354',
@@ -115,6 +128,7 @@ const estadosVisibles = computed(() => (reporteEstados.value ?? []).filter(estad
 const totalVisible = computed(() => estadosVisibles.value.reduce((suma, estado) => suma + estado.cantidad, 0));
 const maximo = computed(() => Math.max(1, ...estadosVisibles.value.map(estado => estado.cantidad)));
 const gradiente = computed(() => {
+  if (!totalVisible.value) return 'var(--border)';
   let acumulado = 0;
   const secciones = estadosVisibles.value.map(({ cantidad, color }) => {
     const inicio = acumulado;
@@ -170,39 +184,71 @@ onMounted(cargarReportes);
 </script>
 
 <style scoped>
-.reportes { display: grid; gap: 1.25rem; }
-.reportes h1, .reportes h2, .reportes p, .metricas { margin: 0; }
-.encabezado, .controles { display: flex; flex-wrap: wrap; align-items: center; gap: .75rem; }
-.encabezado { justify-content: space-between; }
-.metricas { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 10rem), 1fr)); gap: .75rem; }
-.metricas > div, .distribucion { border: 1px solid var(--border); border-radius: var(--radius-xl); background: var(--surface); }
-.metricas > div { padding: 1rem; }
-.metricas dt { color: var(--text-muted); }
-.metricas dd { margin: 0; font-size: 1.65rem; font-weight: 700; }
-.distribucion { min-width: 0; padding: clamp(.75rem, 3vw, 1.5rem); display: grid; gap: 1rem; }
-.opciones { padding: 0; border: 0; margin: 0; min-width: 0; }
-.opciones legend { padding: 0; margin-bottom: .5rem; font-weight: 600; }
-details .opciones { margin-top: .75rem; }
-details button { margin-top: .75rem; }
-summary { cursor: pointer; min-height: 44px; align-content: center; }
-.opcion-estado { display: inline-flex; align-items: center; gap: .5rem; min-height: 44px; cursor: pointer; }
+.reportes { display: grid; gap: 1.25rem; color: var(--text); }
+.reportes :is(h1, h2, p, dl) { margin: 0; }
+.encabezado, .distribucion-cabecera { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: .85rem; }
+.encabezado h1 { font-size: clamp(1.55rem, 3.3vw, 2.15rem); letter-spacing: -.025em; line-height: 1.1; }
+.encabezado p, .distribucion-cabecera p { margin-top: .35rem; color: var(--text-muted); font-size: .88rem; }
+.actualizar { min-height: 2.65rem; border-radius: var(--radius-pill); }
+.metricas { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: .75rem; }
+.metrica, .distribucion { border: 1px solid var(--border); background: var(--surface); box-shadow: 0 2px 8px var(--shadow-color); }
+.metrica { display: grid; grid-template-columns: auto minmax(0, 1fr); align-items: center; gap: .1rem .85rem; padding: .85rem 1rem; border-radius: var(--radius-lg); }
+.metrica-icono { grid-row: span 2; padding: .55rem; box-sizing: content-box; width: 1.15rem; height: 1.15rem; border-radius: 50%; color: var(--primary-text); background: var(--primary-subtle); }
+.pendiente .metrica-icono { color: var(--text); background: var(--surface-alt); }
+.resuelta .metrica-icono { color: var(--success); background: var(--surface-alt); }
+.metrica dt { font-size: .84rem; color: var(--text-muted); line-height: 1.3; overflow-wrap: anywhere; }
+.metrica dd { grid-column: 2; margin: 0; font-size: 1.55rem; font-weight: 700; line-height: 1.2; font-variant-numeric: tabular-nums; }
+.distribucion { min-width: 0; padding: clamp(.85rem, 2.5vw, 1.35rem); border-radius: var(--radius-xl); display: grid; gap: .85rem; }
+.distribucion h2 { font-size: 1.2rem; letter-spacing: -.02em; }
+.segmentos { display: inline-flex; gap: .2rem; padding: .22rem; background: var(--surface-alt); border-radius: var(--radius-pill); }
+.segmento { padding: .45rem .8rem; min-height: 2.5rem; border: 1px solid transparent; border-radius: var(--radius-pill); background: transparent; color: var(--text-muted); font: inherit; font-size: .83rem; font-weight: 650; cursor: pointer; }
+.segmento[aria-pressed="true"] { background: var(--surface); color: var(--primary-text); border-color: var(--border); box-shadow: 0 1px 3px var(--shadow-color); }
+.segmento:hover { color: var(--primary-text); }
+.filtros summary { display: inline-flex; align-items: center; min-height: 2.5rem; gap: .5rem; cursor: pointer; font-size: .85rem; font-weight: 600; list-style: none; }
+.filtros summary::-webkit-details-marker { display: none; }
+.filtros summary span { border-radius: var(--radius-pill); padding: .12rem .5rem; color: var(--primary-text); background: var(--primary-subtle); }
+.filtros[open] .flecha { transform: rotate(180deg); }
+.opciones { margin: .35rem 0 0; padding: .65rem .8rem .8rem; border: 1px solid var(--border); border-radius: var(--radius-lg); }
+.opciones legend { padding: 0 .3rem; font-weight: 600; font-size: .82rem; }
+.controles { display: flex; flex-wrap: wrap; align-items: center; gap: .15rem .9rem; }
+.opcion-estado { display: inline-flex; align-items: center; gap: .45rem; min-height: 2.5rem; font-size: .84rem; cursor: pointer; }
 .opcion-estado input { accent-color: var(--primary); width: 1rem; height: 1rem; }
-.reportes .btn[aria-pressed="true"] { background: var(--primary); color: var(--on-primary); border-color: var(--primary); }
-.reportes .btn:disabled { cursor: default; background: var(--surface-alt); color: var(--text-muted); }
-.reportes :is(button, input, summary):focus-visible { outline: 2px solid var(--text); outline-offset: 2px; }
+.reportes :is(button, input, summary):focus-visible { outline: 2px solid var(--primary-text); outline-offset: 2px; }
+.desglose { display: grid; grid-template-columns: minmax(0, 1.2fr) minmax(0, 1fr); gap: 1rem; }
+.grafico { display: grid; align-items: center; background: var(--surface-alt); border-radius: var(--radius-lg); padding: clamp(.8rem, 2.3vw, 1.25rem); min-height: 15rem; }
 .barras { display: grid; gap: .65rem; }
-.barra { display: grid; grid-template-columns: minmax(7rem, 12rem) minmax(2rem, 1fr) auto; align-items: center; gap: .65rem; overflow-wrap: anywhere; }
-.pista { height: 1.25rem; background: var(--surface-alt); border: 1px solid var(--border); border-radius: var(--radius-pill); }
+.barra { display: grid; grid-template-columns: minmax(0, 1fr) auto; align-items: center; gap: .25rem .6rem; font-size: .83rem; overflow-wrap: anywhere; }
+.barra strong { font-variant-numeric: tabular-nums; }
+.pista { grid-column: 1 / -1; height: .45rem; background: var(--border); border-radius: var(--radius-pill); }
 .relleno { height: 100%; border-radius: inherit; }
-.circular { width: min(100%, 16rem); aspect-ratio: 1; border-radius: 50%; margin-inline: auto; display: grid; place-items: center; }
-.dona strong { display: grid; place-items: center; width: 65%; aspect-ratio: 1; border-radius: 50%; background: var(--surface); font-size: 1.5rem; }
-.tabla { overflow-x: auto; }
-table caption { text-align: start; color: var(--text-muted); padding: .5rem 0; }
+.circular { width: min(100%, 14rem); aspect-ratio: 1; border-radius: 50%; margin-inline: auto; display: grid; place-items: center; }
+.dona-centro { display: grid; place-content: center; text-align: center; width: 68%; aspect-ratio: 1; border-radius: 50%; background: var(--surface); }
+.dona-centro strong { font-size: 1.65rem; line-height: 1.15; }
+.dona-centro small { color: var(--text-muted); }
+.tabla { overflow-x: auto; min-width: 0; }
+table { width: 100%; border-collapse: collapse; font-size: .86rem; }
+table caption { text-align: start; font-size: .9rem; font-weight: 700; padding: .35rem .5rem .65rem; }
 table :is(th, td) { padding: .65rem .5rem; text-align: start; border-bottom: 1px solid var(--border); }
+thead th { color: var(--text-muted); background: var(--surface-alt); font-size: .78rem; }
+table td { text-align: end; font-variant-numeric: tabular-nums; }
+thead th:not(:first-child) { text-align: end; }
 tbody th { font-weight: 500; }
-.muestra { display: inline-block; inline-size: .85rem; block-size: .85rem; margin-inline-end: .35rem; border-radius: var(--radius-circle); border: 1px solid var(--text-muted); }
+.muestra { display: inline-block; inline-size: .6rem; block-size: .6rem; margin-inline-end: .3rem; border-radius: 50%; }
+.mensaje { padding: .8rem 1rem; border-radius: var(--radius-lg); background: var(--surface-alt); color: var(--text); }
+.mensaje.error { border-inline-start: 3px solid var(--danger); }
+@media (max-width: 45rem) {
+  .metricas { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .desglose { grid-template-columns: minmax(0, 1fr); }
+}
+@media (max-width: 28rem) {
+  .metrica { padding: .65rem; gap: .15rem .4rem; }
+  .metrica-icono { padding: .32rem; width: .9rem; height: .9rem; }
+  .metrica dt { font-size: .76rem; }
+  table :is(th, td) { padding-inline: .35rem; }
+}
 @media (forced-colors: active) {
   .circular, .relleno, .muestra { forced-color-adjust: none; }
-  .dona strong { background: Canvas; color: CanvasText; }
+  .dona-centro { background: Canvas; color: CanvasText; }
+  .segmento[aria-pressed="true"] { border-color: Highlight; }
 }
 </style>

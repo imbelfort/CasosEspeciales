@@ -38,6 +38,8 @@
       <span>Has alcanzado el límite institucional máximo de 5 casos especiales aprobados en tu carrera universitaria.</span>
     </div>
 
+    <p v-if="estadoStripe" class="banner-aviso-warn" role="status">{{ estadoStripe }}</p>
+
     <!-- BANDEJA DE MIS CASOS -->
     <div class="table-responsive">
       <table class="data-table">
@@ -78,6 +80,11 @@
               <div v-if="sol.estado === 'APROBADA_DIRECCION'" class="pay-actions-group">
                 <button @click="abrirPagoQr(sol)" class="btn-action btn-pay-qr" title="Pagar arancel inmediatamente con QR bancario">
                   <QrCode :size="14" class="inline-icon" /> Pagar con QR
+                </button>
+                <button v-if="stripeDisponible" type="button" class="btn-action btn-pay"
+                  :disabled="stripeAbriendo" @click="pagarConTarjeta(sol)">
+                  <CreditCard :size="14" class="inline-icon" aria-hidden="true" />
+                  {{ stripeAbriendo === sol.id ? 'Abriendo Stripe…' : 'Pagar con tarjeta' }}
                 </button>
                 <button @click="abrirPago(sol)" class="btn-action btn-pay" title="Subir boleta física de depósito">
                   <UploadCloud :size="14" class="inline-icon" /> Subir Boleta
@@ -363,7 +370,7 @@
 </template>
 
 <script setup>
-import { ref, onMounted, computed, watch, nextTick } from 'vue';
+import { ref, onMounted, onUnmounted, computed, watch, nextTick } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
 import { 
   Plus, 
@@ -443,6 +450,10 @@ const router = useRouter();
 const modalRespaldo = ref(false);
 const modalPago = ref(false);
 const modalPagoQr = ref(false);
+const stripeDisponible = ref(false);
+const stripeAbriendo = ref(null);
+const estadoStripe = ref('');
+const consultasStripe = new AbortController();
 const modalDetalle = ref(false);
 const solicitudActiva = ref(null);
 
@@ -756,6 +767,61 @@ const abrirPagoQr = (sol) => {
   modalPagoQr.value = true;
 };
 
+async function pagarConTarjeta(sol) {
+  stripeAbriendo.value = sol.id;
+  estadoStripe.value = '';
+  try {
+    const { data } = await api.post(`/solicitudes/${sol.id}/pagar-stripe`, {}, { signal: consultasStripe.signal });
+    window.location.assign(data.url);
+  } catch (error) {
+    if (!consultasStripe.signal.aborted) {
+      estadoStripe.value = error.response?.data?.message || 'No se pudo abrir el pago con tarjeta.';
+    }
+  } finally {
+    stripeAbriendo.value = null;
+  }
+}
+
+async function procesarRetornoStripe() {
+  const { pago_tarjeta: id, resultado } = route.query;
+  if (typeof id !== 'string' || !/^\d+$/.test(id) || !['confirmar', 'cancelar'].includes(resultado)) return;
+
+  const rutaPago = `/pagos/stripe/${id}`;
+  const opciones = { signal: consultasStripe.signal };
+  estadoStripe.value = 'Consultando el estado del pago con tarjeta…';
+  try {
+    let { data } = resultado === 'cancelar'
+      ? await api.delete(rutaPago, opciones)
+      : await api.get(rutaPago, opciones);
+
+    for (let intento = 0; intento < 10 && data.estado === 'PENDIENTE' && !consultasStripe.signal.aborted; intento++) {
+      await new Promise(resolve => setTimeout(resolve, 1500));
+      ({ data } = await api.get(rutaPago, opciones));
+    }
+
+    if (data.estado === 'PENDIENTE') {
+      estadoStripe.value = 'Stripe todavía no ha confirmado el pago. Puedes volver a consultar el estado recargando la página.';
+      return;
+    }
+
+    if (data.estado === 'PAGADO') {
+      estadoStripe.value = 'Pago con tarjeta confirmado.';
+      await cargarDatos();
+    } else {
+      estadoStripe.value = 'El pago con tarjeta se cerró. Puedes elegir un método de pago nuevamente.';
+    }
+
+    const query = { ...route.query };
+    delete query.pago_tarjeta;
+    delete query.resultado;
+    await router.replace({ path: route.path, query, hash: route.hash });
+  } catch (error) {
+    if (!consultasStripe.signal.aborted) {
+      estadoStripe.value = error.response?.data?.message || 'No se pudo consultar el pago con tarjeta.';
+    }
+  }
+}
+
 const onPagoQrCompletado = (pago) => {
   cargarDatos();
 };
@@ -813,9 +879,14 @@ watch(
 );
 
 onMounted(async () => {
+  api.get('/pagos/stripe/config', { signal: consultasStripe.signal })
+    .then(({ data }) => { stripeDisponible.value = data.disponible; })
+    .catch(() => {});
+  procesarRetornoStripe();
   await cargarDatos();
   datosInicialesCargados.value = true;
 });
+onUnmounted(() => consultasStripe.abort());
 </script>
 
 <style scoped>

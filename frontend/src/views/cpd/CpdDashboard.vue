@@ -7,9 +7,9 @@
       </div>
       <div class="header-action-buttons">
         <button @click="modalConfigPeriodo = true" class="btn-primary">
-          <Calendar :size="15" class="inline-icon" /> Parámetros y Arancel
+          <Calendar :size="15" class="inline-icon" /> {{ esCpd ? 'Parámetros y arancel' : 'Parámetros' }}
         </button>
-        <button @click="cargarPendientes" class="btn-secondary">
+        <button @click="actualizarPanel" class="btn-secondary">
           <RefreshCw :size="15" class="inline-icon" /> Actualizar
         </button>
       </div>
@@ -59,6 +59,34 @@
       No hay oficios pendientes de habilitación en CPD.
     </div>
 
+    <section v-if="esCpd" class="oficio-card" aria-labelledby="titulo-pagos-stripe">
+      <h3 id="titulo-pagos-stripe">Pagos con tarjeta</h3>
+      <p v-if="errorPagosStripe" role="status">{{ errorPagosStripe }}</p>
+      <p v-else-if="cargandoPagosStripe" role="status">Cargando pagos…</p>
+      <p v-else-if="!pagosStripe?.data.length">Aún no hay pagos con tarjeta registrados.</p>
+      <div v-else class="table-responsive">
+        <table class="data-table">
+          <thead>
+            <tr><th>Solicitud</th><th>Estudiante</th><th>Arancel</th><th>Estado del pago</th></tr>
+          </thead>
+          <tbody>
+            <tr v-for="pago in pagosStripe.data" :key="pago.id">
+              <td>{{ pago.solicitud?.codigo }}</td>
+              <td>{{ pago.usuario?.nombre }} {{ pago.usuario?.apellidos }}</td>
+              <td>{{ formatoArancel.format(pago.monto) }}</td>
+              <td>{{ estadosPago[pago.estado] || pago.estado }}</td>
+            </tr>
+          </tbody>
+        </table>
+        <div v-if="pagosStripe.last_page > 1" class="mt-3">
+          <button type="button" class="btn-secondary" :disabled="pagosStripe.current_page <= 1"
+            @click="cargarPagosStripe(pagosStripe.current_page - 1)">Anterior</button>
+          <button type="button" class="btn-secondary" :disabled="!pagosStripe.next_page_url"
+            @click="cargarPagosStripe(pagosStripe.current_page + 1)">Siguiente</button>
+        </div>
+      </div>
+    </section>
+
     <!-- MODAL CONFIGURACIÓN DE PARÁMETROS, CRONOGRAMA Y ARANCEL (CPD) -->
     <div v-if="modalConfigPeriodo" class="modal-backdrop">
       <div class="modal-box modal-lg">
@@ -75,14 +103,14 @@
         <div class="modal-body-scroll">
           <form @submit.prevent="guardarConfigPeriodo" class="modal-form">
             <div class="alert-box-info mb-3">
-              Configura las fechas del cronograma y el monto del arancel. El plazo de pago va del inicio de evaluación al fin de inscripción en CPD.
+              Configura las fechas del cronograma{{ esCpd ? ' y el monto del arancel' : '' }}. El plazo de pago va del inicio de evaluación al fin de inscripción en CPD.
             </div>
             
             <div class="row">
-              <div class="form-group col">
-                <label>Costo Arancel por Caso Especial (Bs.):</label>
+              <label v-if="esCpd" class="form-group col">
+                Arancel por caso especial (Bs.)
                 <input v-model.number="formConfig.costo_arancel_caso" type="number" min="0" step="0.01" required />
-              </div>
+              </label>
               <div class="form-group col">
                 <label>Estado del Período:</label>
                 <input :value="periodoActivo?.estado || 'ACTIVO'" disabled />
@@ -217,9 +245,41 @@
 </template>
 
 <script setup>
-import { ref, onMounted } from 'vue';
+import { computed, ref, onMounted, watch } from 'vue';
 import { RefreshCw, CheckSquare, X, Calendar } from '@lucide/vue';
 import api from '../../services/api';
+
+const props = defineProps({ usuario: Object });
+const esCpd = computed(() => props.usuario?.roles?.some(rol => rol.nombre === 'CPD'));
+const pagosStripe = ref(null);
+const cargandoPagosStripe = ref(false);
+const errorPagosStripe = ref('');
+const formatoArancel = new Intl.NumberFormat('es-BO', { style: 'currency', currency: 'BOB' });
+const estadosPago = { PENDIENTE: 'Pendiente', PAGADO: 'Pagado', EXPIRADO: 'Vencido', FALLIDO: 'Fallido', CANCELADO: 'Cancelado' };
+
+async function cargarPagosStripe(pagina = 1) {
+  if (!esCpd.value || cargandoPagosStripe.value) return;
+  cargandoPagosStripe.value = true;
+  errorPagosStripe.value = '';
+  try {
+    const { data } = await api.get('/cpd/pagos-stripe', { params: { page: pagina } });
+    if (esCpd.value) pagosStripe.value = data;
+  } catch {
+    errorPagosStripe.value = 'No se pudieron cargar los pagos con tarjeta.';
+  } finally {
+    cargandoPagosStripe.value = false;
+  }
+}
+
+function actualizarPanel() {
+  cargarPendientes();
+  cargarPagosStripe(pagosStripe.value?.current_page);
+}
+
+watch(esCpd, (permitido) => {
+  if (permitido) cargarPagosStripe();
+  else pagosStripe.value = null;
+}, { immediate: true });
 
 const oficios = ref([]);
 const periodos = ref([]);
@@ -272,10 +332,12 @@ const guardarConfigPeriodo = async () => {
   if (!periodoActivo.value?.id) return;
   guardandoConfig.value = true;
   try {
-    const res = await api.put(`/cpd/periodo/${periodoActivo.value.id}/config`, formConfig.value);
+    const datos = { ...formConfig.value };
+    if (!esCpd.value) delete datos.costo_arancel_caso;
+    const res = await api.put(`/cpd/periodo/${periodoActivo.value.id}/config`, datos);
     periodoActivo.value = res.data.periodo;
     modalConfigPeriodo.value = false;
-    alert('Parámetros de cronograma y arancel de casos especiales actualizados exitosamente.');
+    alert('Parámetros actualizados correctamente.');
   } catch (e) {
     alert(e.response?.data?.error || 'Error al guardar configuración.');
   } finally {

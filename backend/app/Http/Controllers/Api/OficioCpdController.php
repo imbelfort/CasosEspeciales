@@ -5,6 +5,7 @@ namespace App\Http\Controllers\Api;
 use App\Http\Controllers\Controller;
 use App\Models\ArchivoSolicitud;
 use App\Models\OficioCpd;
+use App\Models\PagoTransaccion;
 use App\Models\Periodo;
 use App\Models\Solicitud;
 use App\Services\AuditoriaNotificacionService;
@@ -38,6 +39,10 @@ class OficioCpdController extends Controller
                 return response()->json([
                     'error' => "Solo se puede adjuntar comprobante de pago si la solicitud está en estado APROBADA_DIRECCION (actual: {$solicitud->estado})."
                 ], 422);
+            }
+
+            if (PagoTransaccion::where('id_solicitud', $solicitud->id)->where('pasarela', 'STRIPE')->where('estado', 'PENDIENTE')->exists()) {
+                return response()->json(['error' => 'Hay un pago con tarjeta pendiente para esta solicitud.'], 409);
             }
 
             $file = $request->file('comprobante');

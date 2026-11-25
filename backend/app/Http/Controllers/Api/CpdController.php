@@ -5,6 +5,7 @@ namespace App\Http\Controllers\Api;
 use App\Http\Controllers\Controller;
 use App\Models\OficioCpd;
 use App\Models\OficioRespuestaCpd;
+use App\Models\PagoTransaccion;
 use App\Models\Solicitud;
 use App\Services\AuditoriaNotificacionService;
 use Illuminate\Http\Request;
@@ -12,6 +13,18 @@ use Illuminate\Support\Facades\DB;
 
 class CpdController extends Controller
 {
+    public function pagosStripe(Request $request)
+    {
+        abort_unless($request->user()->tieneRol('CPD'), 403);
+
+        return PagoTransaccion::query()
+            ->where('pasarela', 'STRIPE')
+            ->select('id', 'id_solicitud', 'id_usuario', 'monto', 'moneda', 'estado', 'fecha_pago', 'created_at')
+            ->with(['solicitud:id,codigo', 'usuario:id_usuario,nombre,apellidos'])
+            ->orderByDesc('id')
+            ->paginate(20);
+    }
+
     /**
      * Listar pendientes para CPD (Oficios y Solicitudes remitidas)
      */
@@ -159,6 +172,8 @@ class CpdController extends Controller
             return response()->json(['error' => 'Acceso denegado. Exclusivo para personal de CPD o Dirección.'], 403);
         }
 
+        abort_if(!$user->tieneRol('CPD') && array_key_exists('costo_arancel_caso', $request->all()), 403, 'Solo CPD puede modificar el arancel.');
+
         $validated = $request->validate([
             'fecha_inicio_solicitud' => 'nullable|date',
             'fecha_fin_solicitud' => 'nullable|date',
@@ -166,7 +181,7 @@ class CpdController extends Controller
             'fecha_fin_evaluacion' => 'nullable|date',
             'fecha_inicio_ejecucion' => 'nullable|date',
             'fecha_fin_ejecucion' => 'nullable|date',
-            'costo_arancel_caso' => 'nullable|numeric|min:0',
+            'costo_arancel_caso' => 'sometimes|required|numeric|min:0|max:99999999.99|decimal:0,2',
             'max_materias_por_caso' => 'nullable|integer|min:1|max:10',
             'max_casos_carrera' => 'nullable|integer|min:1|max:10',
         ]);

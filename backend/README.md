@@ -23,6 +23,14 @@ Inicia el proceso de la cola con `php artisan queue:work --queue=web-push`. El e
 
 Si OpenSSL de XAMPP requiere el archivo de configuración, define `OPENSSL_CONF` con la ruta a `openssl.cnf` en la terminal desde la que generas las claves e inicias el proceso de la cola.
 
+## Pago con tarjeta mediante Stripe
+
+El botón de tarjeta se habilita con una cuenta de Stripe Payments de un país admitido. Configura `STRIPE_SECRET`, `STRIPE_WEBHOOK_SECRET` y `STRIPE_FRONTEND_URL` en el entorno del backend. El arancel se toma del período académico y se cobra en BOB. Usa claves `sk_test_…` para pruebas en un entorno Laravel `local` o `testing` y reserva las claves `sk_live_…` para producción.
+
+CPD define el importe en **Parámetros y arancel** y consulta las transacciones en **Pagos con tarjeta**. Checkout usa ese importe al crear cada sesión, por lo que no hace falta crear un producto o precio en el panel de Stripe.
+
+En Stripe configura el endpoint HTTPS `/api/pagos/stripe/webhook` con los eventos `checkout.session.completed` y `checkout.session.expired`. Para pruebas locales, reenvíalos con `stripe listen --events checkout.session.completed,checkout.session.expired --forward-to localhost:8000/api/pagos/stripe/webhook` y usa el secreto que muestra Stripe CLI. La solicitud se actualiza cuando Laravel recibe la confirmación firmada.
+
 ## About Laravel
 
 Laravel is a web application framework with expressive, elegant syntax. We believe development must be an enjoyable and creative experience to be truly fulfilling. Laravel takes the pain out of development by easing common tasks used in many web projects, such as:
