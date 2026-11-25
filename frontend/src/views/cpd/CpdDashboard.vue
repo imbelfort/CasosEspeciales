@@ -75,13 +75,13 @@
         <div class="modal-body-scroll">
           <form @submit.prevent="guardarConfigPeriodo" class="modal-form">
             <div class="alert-box-info mb-3">
-              Configura el rango oficial de fechas en el que los estudiantes pueden registrar solicitudes de casos especiales y el monto del arancel (UAGRM).
+              Configura las fechas del cronograma y el monto del arancel. El plazo de pago va del inicio de evaluación al fin de inscripción en CPD.
             </div>
             
             <div class="row">
               <div class="form-group col">
                 <label>Costo Arancel por Caso Especial (Bs.):</label>
-                <input v-model.number="formConfig.costo_arancel_caso" type="number" step="0.5" required />
+                <input v-model.number="formConfig.costo_arancel_caso" type="number" min="0" step="0.01" required />
               </div>
               <div class="form-group col">
                 <label>Estado del Período:</label>
@@ -111,8 +111,32 @@
               </div>
               <div class="form-group col">
                 <label>Fecha Límite de Recepción:</label>
-                <input v-model="formConfig.fecha_fin_solicitud" type="date" required />
+                <input v-model="formConfig.fecha_fin_solicitud" type="date" :min="formConfig.fecha_inicio_solicitud" required />
               </div>
+            </div>
+
+            <h4 class="section-title">Evaluación de Dirección</h4>
+            <div class="row">
+              <label class="form-group col">
+                Inicio de evaluación
+                <input v-model="formConfig.fecha_inicio_evaluacion" type="date" required />
+              </label>
+              <label class="form-group col">
+                Fin de evaluación
+                <input v-model="formConfig.fecha_fin_evaluacion" type="date" :min="formConfig.fecha_inicio_evaluacion" required />
+              </label>
+            </div>
+
+            <h4 class="section-title">Inscripción en CPD</h4>
+            <div class="row">
+              <label class="form-group col">
+                Inicio de inscripción
+                <input v-model="formConfig.fecha_inicio_ejecucion" type="date" required />
+              </label>
+              <label class="form-group col">
+                Fin de inscripción
+                <input v-model="formConfig.fecha_fin_ejecucion" type="date" :min="formConfig.fecha_inicio_ejecucion" required />
+              </label>
             </div>
 
             <div class="modal-footer">
@@ -211,12 +235,12 @@ const formResp = ref({ resultado: 'HABILITADO', codigo_respuesta: '', observacio
 const formRespMaterias = ref([]);
 const formConfig = ref({
   costo_arancel_caso: 10,
-  fecha_inicio_solicitud: '2026-03-23',
-  fecha_fin_solicitud: '2026-03-24',
-  fecha_inicio_evaluacion: '2026-03-25',
-  fecha_fin_evaluacion: '2026-03-26',
-  fecha_inicio_ejecucion: '2026-03-27',
-  fecha_fin_ejecucion: '2026-03-28',
+  fecha_inicio_solicitud: '',
+  fecha_fin_solicitud: '',
+  fecha_inicio_evaluacion: '',
+  fecha_fin_evaluacion: '',
+  fecha_inicio_ejecucion: '',
+  fecha_fin_ejecucion: '',
 });
 
 const cargarPendientes = async () => {
@@ -229,15 +253,15 @@ const cargarPendientes = async () => {
     periodos.value = resP.data;
     if (periodos.value.length) {
       periodoActivo.value = periodos.value[0];
-      formConfig.value.costo_arancel_caso = periodoActivo.value.costo_arancel_caso || 10;
+      formConfig.value.costo_arancel_caso = periodoActivo.value.costo_arancel_caso ?? 10;
       formConfig.value.max_materias_por_caso = periodoActivo.value.max_materias_por_caso || 5;
       formConfig.value.max_casos_carrera = periodoActivo.value.max_casos_carrera || 5;
-      formConfig.value.fecha_inicio_solicitud = periodoActivo.value.fecha_inicio_solicitud || '2026-03-23';
-      formConfig.value.fecha_fin_solicitud = periodoActivo.value.fecha_fin_solicitud || '2026-03-24';
-      formConfig.value.fecha_inicio_evaluacion = periodoActivo.value.fecha_inicio_evaluacion || '2026-03-25';
-      formConfig.value.fecha_fin_evaluacion = periodoActivo.value.fecha_fin_evaluacion || '2026-03-26';
-      formConfig.value.fecha_inicio_ejecucion = periodoActivo.value.fecha_inicio_ejecucion || '2026-03-27';
-      formConfig.value.fecha_fin_ejecucion = periodoActivo.value.fecha_fin_ejecucion || '2026-03-28';
+      formConfig.value.fecha_inicio_solicitud = periodoActivo.value.fecha_inicio_solicitud || '';
+      formConfig.value.fecha_fin_solicitud = periodoActivo.value.fecha_fin_solicitud || '';
+      formConfig.value.fecha_inicio_evaluacion = periodoActivo.value.fecha_inicio_evaluacion || '';
+      formConfig.value.fecha_fin_evaluacion = periodoActivo.value.fecha_fin_evaluacion || '';
+      formConfig.value.fecha_inicio_ejecucion = periodoActivo.value.fecha_inicio_ejecucion || '';
+      formConfig.value.fecha_fin_ejecucion = periodoActivo.value.fecha_fin_ejecucion || '';
     }
   } catch (e) {
     console.error(e);

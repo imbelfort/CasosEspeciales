@@ -7,13 +7,13 @@
           <h4 class="etapas-title">Proceso Oficial de Casos Especiales (Gestión Semestral {{ gestionFormateada }})</h4>
           <p class="etapas-subtitle">
             Seguimiento en tiempo real de las fases oficiales &bull; Estado actual: 
-            <strong class="text-primary">{{ etapaActualInfo.nombre }}</strong>
+            <strong class="text-primary">{{ estadoCronograma }}</strong>
           </p>
         </div>
       </div>
-      <div class="header-badge" :class="etapaActualInfo.claseBadge">
+      <div class="header-badge" :class="{ 'badge-active': etapasActivas.length > 0 }">
         <Clock :size="13" class="inline-icon" />
-        <span>{{ etapaActualInfo.estadoTexto }}</span>
+        <span>{{ etapasActivas.length ? 'En curso' : estadoCronograma }}</span>
       </div>
     </div>
 
@@ -23,18 +23,18 @@
         v-for="(etapa, idx) in etapas" 
         :key="etapa.id" 
         class="step-node"
-        :class="[getStepState(etapa, idx)]"
+        :class="etapa.estado"
       >
         <div class="step-connector" v-if="idx > 0"></div>
         <div class="step-indicator">
-          <Check v-if="getStepState(etapa, idx) === 'completed'" :size="14" />
+          <Check v-if="etapa.estado === 'completed'" :size="14" />
           <span v-else>{{ idx + 1 }}</span>
         </div>
         <div class="step-content">
           <span class="step-num-label">Etapa {{ idx + 1 }}</span>
           <strong class="step-name">{{ etapa.nombre }}</strong>
           <span class="step-dates">{{ etapa.fechasTexto }}</span>
-          <span class="step-badge-tag">{{ getStepBadgeLabel(etapa, idx) }}</span>
+          <span class="step-badge-tag">{{ etiquetasEstado[etapa.estado] }}</span>
         </div>
       </div>
     </div>
@@ -62,89 +62,49 @@ const gestionFormateada = computed(() => {
   return g;
 });
 
-// Definición oficial de las etapas del proceso
+const formatoFecha = new Intl.DateTimeFormat('es-BO', {
+  day: 'numeric',
+  month: 'long',
+  year: 'numeric',
+  timeZone: 'UTC'
+});
+const formatoMonto = new Intl.NumberFormat('es-BO', { maximumFractionDigits: 2 });
+const formatoHoy = new Intl.DateTimeFormat('sv-SE', { timeZone: 'America/La_Paz' });
+
+const etiquetasEstado = {
+  active: 'En Curso Ahora',
+  completed: 'Concluida',
+  pending: 'Próxima',
+  unconfigured: 'Sin fechas'
+};
+
 const etapas = computed(() => {
   const p = props.periodo;
+  const hoy = formatoHoy.format(new Date());
   return [
-    {
-      id: 1,
-      nombre: 'Recepción de Solicitudes',
-      descripcion: 'Envío digital de casos especiales y selección de materias en el sistema.',
-      fechaInicio: p?.fecha_inicio_solicitud || '2026-03-23',
-      fechaFin: p?.fecha_fin_solicitud || '2026-03-24',
-      fechasTexto: '23–24 Marzo'
-    },
-    {
-      id: 2,
-      nombre: 'Evaluación de Dirección',
-      descripcion: 'Revisión académica, control de cupos y resolución por las autoridades.',
-      fechaInicio: p?.fecha_inicio_evaluacion || '2026-03-25',
-      fechaFin: p?.fecha_fin_evaluacion || '2026-03-26',
-      fechasTexto: '25–26 Marzo'
-    },
-    {
-      id: 3,
-      nombre: 'Cancelación de Arancel (10 Bs)',
-      descripcion: 'Pago del arancel universitario mediante QR PagoFácil tras la aprobación.',
-      fechaInicio: p?.fecha_inicio_evaluacion || '2026-03-25',
-      fechaFin: p?.fecha_fin_ejecucion || '2026-03-28',
-      fechasTexto: '25–28 Marzo'
-    },
-    {
-      id: 4,
-      nombre: 'Inscripción en CPD',
-      descripcion: 'Habilitación técnica e inclusión definitiva en el sistema universitario.',
-      fechaInicio: p?.fecha_inicio_ejecucion || '2026-03-27',
-      fechaFin: p?.fecha_fin_ejecucion || '2026-03-28',
-      fechasTexto: '27–28 Marzo'
-    }
-  ];
+    ['Recepción de Solicitudes', p?.fecha_inicio_solicitud, p?.fecha_fin_solicitud],
+    ['Evaluación de Dirección', p?.fecha_inicio_evaluacion, p?.fecha_fin_evaluacion],
+    [`Cancelación de Arancel (${formatoMonto.format(p?.costo_arancel_caso ?? 10)} Bs)`, p?.fecha_inicio_evaluacion, p?.fecha_fin_ejecucion],
+    ['Inscripción en CPD', p?.fecha_inicio_ejecucion, p?.fecha_fin_ejecucion]
+  ].map(([nombre, inicio, fin], index) => {
+    const etapa = { id: index + 1, nombre, fechasTexto: 'Fechas por definir', estado: 'unconfigured' };
+    if (!inicio || !fin || fin < inicio) return etapa;
+
+    etapa.fechasTexto = formatoFecha.formatRange(
+      new Date(`${inicio}T00:00:00Z`),
+      new Date(`${fin}T00:00:00Z`)
+    );
+    etapa.estado = hoy < inicio ? 'pending' : hoy > fin ? 'completed' : 'active';
+    return etapa;
+  });
 });
 
-// Determinar dinámicamente en qué etapa estamos respecto a la fecha actual
-const hoyStr = computed(() => {
-  const now = new Date();
-  const y = now.getFullYear();
-  const m = String(now.getMonth() + 1).padStart(2, '0');
-  const d = String(now.getDate()).padStart(2, '0');
-  return `${y}-${m}-${d}`;
-});
-
-// Índice de etapa activa actual (por defecto 0: Etapa 1)
-const indiceEtapaActiva = computed(() => {
-  const hoy = hoyStr.value;
-  for (let i = 0; i < etapas.value.length; i++) {
-    const et = etapas.value[i];
-    if (hoy >= et.fechaInicio && hoy <= et.fechaFin) {
-      return i;
-    }
-  }
-  // Si estamos antes de empezar
-  if (etapas.value.length && hoy < etapas.value[0].fechaInicio) return 0;
-  // Si ya pasó
-  return etapas.value.length - 1;
-});
-
-const getStepState = (etapa, idx) => {
-  if (idx < indiceEtapaActiva.value) return 'completed';
-  if (idx === indiceEtapaActiva.value) return 'active';
-  return 'pending';
-};
-
-const getStepBadgeLabel = (etapa, idx) => {
-  const state = getStepState(etapa, idx);
-  if (state === 'completed') return 'Concluida';
-  if (state === 'active') return 'En Curso Ahora';
-  return 'Próxima';
-};
-
-const etapaActualInfo = computed(() => {
-  const etapa = etapas.value[indiceEtapaActiva.value] || etapas.value[0];
-  return {
-    nombre: `Etapa ${indiceEtapaActiva.value + 1}: ${etapa.nombre}`,
-    estadoTexto: `Fase Activa (${etapa.fechasTexto})`,
-    claseBadge: 'badge-active'
-  };
+const etapasActivas = computed(() => etapas.value.filter(etapa => etapa.estado === 'active'));
+const estadoCronograma = computed(() => {
+  if (etapasActivas.value.length) return etapasActivas.value.map(etapa => etapa.nombre).join(' · ');
+  if (etapas.value.every(etapa => etapa.estado === 'completed')) return 'Cronograma concluido';
+  if (etapas.value.every(etapa => etapa.estado === 'unconfigured')) return 'Cronograma por configurar';
+  return 'Sin etapas en curso';
 });
 </script>
 
