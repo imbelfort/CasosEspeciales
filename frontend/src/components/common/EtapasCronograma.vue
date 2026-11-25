@@ -163,7 +163,7 @@ const estadoCronograma = computed(() => {
 }
 .header-badge.badge-active {
   background-color: var(--primary);
-  color: #ffffff;
+  color: var(--on-primary);
   border-color: var(--primary);
 }
 
@@ -260,7 +260,7 @@ const estadoCronograma = computed(() => {
 }
 .step-node.active .step-indicator {
   background-color: var(--primary);
-  color: #ffffff;
+  color: var(--on-primary);
   border-color: var(--primary);
 }
 .step-node.active .step-num-label {
@@ -268,7 +268,7 @@ const estadoCronograma = computed(() => {
 }
 .step-node.active .step-badge-tag {
   background-color: var(--primary);
-  color: #ffffff;
+  color: var(--on-primary);
   border-color: var(--primary);
 }
 

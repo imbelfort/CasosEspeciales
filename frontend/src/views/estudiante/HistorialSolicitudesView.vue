@@ -88,10 +88,10 @@ onMounted(cargarCasos);
 
 <style scoped>
 .role-view {
-  background: white;
+  background: var(--surface);
   border-radius: 12px;
   padding: 1.5rem;
-  border: 1px solid #e2e8f0;
+  border: 1px solid var(--border);
 }
 .view-header {
   display: flex;
@@ -100,20 +100,9 @@ onMounted(cargarCasos);
   margin-bottom: 1.5rem;
 }
 .view-desc {
-  color: #64748b;
+  color: var(--text-muted);
   font-size: 0.9rem;
   margin: 0.2rem 0 0 0;
-}
-.btn-secondary {
-  background: #64748b;
-  color: white;
-  border: none;
-  padding: 0.6rem 1.2rem;
-  border-radius: 6px;
-  cursor: pointer;
-  display: flex;
-  align-items: center;
-  gap: 0.3rem;
 }
 .inline-icon {
   vertical-align: middle;
@@ -124,10 +113,10 @@ onMounted(cargarCasos);
   gap: 1.5rem;
 }
 .historial-card {
-  border: 1px solid #e2e8f0;
+  border: 1px solid var(--border);
   border-radius: 8px;
   padding: 1.2rem;
-  background: #f8fafc;
+  background: var(--surface-alt);
 }
 .historial-card-header {
   display: flex;
@@ -152,11 +141,11 @@ onMounted(cargarCasos);
 }
 .tipo-tag {
   font-weight: 600;
-  color: #334155;
+  color: var(--text);
 }
 .periodo-tag {
   font-size: 0.85rem;
-  color: #64748b;
+  color: var(--text-muted);
 }
 .status-badge {
   padding: 0.25rem 0.65rem;
@@ -174,24 +163,24 @@ onMounted(cargarCasos);
 .historial-meta {
   font-size: 0.9rem;
   color: #475569;
-  border-bottom: 1px solid #e2e8f0;
+  border-bottom: 1px solid var(--border);
   padding-bottom: 0.8rem;
   margin-bottom: 1rem;
 }
 .eval-note {
-  background: #eff6ff;
+  background: var(--primary-subtle);
   padding: 0.5rem 0.8rem;
   border-radius: 4px;
   margin-top: 0.5rem;
-  color: #1e40af;
+  color: var(--text);
 }
 .timeline-title {
   margin: 0 0 0.8rem 0;
   font-size: 0.9rem;
-  color: #0f172a;
+  color: var(--text);
 }
 .timeline {
-  border-left: 2px solid #cbd5e1;
+  border-left: 2px solid var(--border);
   padding-left: 1.2rem;
 }
 .timeline-item {
@@ -218,7 +207,7 @@ onMounted(cargarCasos);
 }
 .timeline-transicion {
   font-size: 0.8rem;
-  color: #64748b;
+  color: var(--text-muted);
   margin: 0.2rem 0;
 }
 .badge-sm {
@@ -230,7 +219,7 @@ onMounted(cargarCasos);
 .timeline-obs {
   margin: 0.3rem 0 0 0;
   font-size: 0.85rem;
-  color: #334155;
+  color: var(--text);
 }
 .no-records {
   text-align: center;

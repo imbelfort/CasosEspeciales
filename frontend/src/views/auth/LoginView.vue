@@ -220,7 +220,7 @@ const handleLogin = async () => {
   width: 52px;
   height: 52px;
   background-color: var(--primary);
-  color: #ffffff;
+  color: var(--on-primary);
   font-weight: 800;
   display: flex;
   align-items: center;
@@ -276,8 +276,6 @@ const handleLogin = async () => {
   border: 1px solid var(--border);
   color: var(--text);
   border-radius: var(--radius-pill, 100px);
-  padding: 0.45rem 0.8rem;
-  font-size: 0.82rem;
   font-weight: 600;
   cursor: pointer;
   display: inline-flex;
@@ -291,7 +289,7 @@ const handleLogin = async () => {
 }
 .role-pill-btn.active {
   background-color: var(--primary);
-  color: #ffffff;
+  color: var(--on-primary);
   border-color: var(--primary);
 }
 
@@ -350,7 +348,7 @@ const handleLogin = async () => {
 /* Botón Primario estilo Pill */
 .meta-btn-primary {
   background-color: var(--primary);
-  color: #ffffff;
+  color: var(--on-primary);
   border: none;
   border-radius: var(--radius-pill, 100px);
   padding: 0.78rem 1.4rem;

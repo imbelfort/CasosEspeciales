@@ -294,7 +294,7 @@ onUnmounted(() => {
   align-items: baseline;
   gap: 0.25rem;
   background: var(--primary);
-  color: #ffffff;
+  color: var(--on-primary);
   padding: 0.4rem 0.8rem;
   border-radius: 6px;
   font-weight: 900;

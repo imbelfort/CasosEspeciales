@@ -484,6 +484,7 @@
 
 <script setup>
 import { ref, onMounted, computed } from 'vue';
+import { useRoute, useRouter } from 'vue-router';
 import { 
   Users,
   UserPlus,
@@ -498,7 +499,13 @@ import {
 import api from '../../services/api';
 import EtapasCronograma from '../../components/common/EtapasCronograma.vue';
 
-const submodulo = ref('usuarios');
+const route = useRoute();
+const router = useRouter();
+const secciones = ['usuarios', 'solicitudes', 'cupos', 'oficios'];
+const submodulo = computed({
+  get: () => secciones.includes(route.query.seccion) ? route.query.seccion : 'usuarios',
+  set: seccion => router.replace({ query: { ...route.query, seccion }, hash: route.hash }),
+});
 const usuarios = ref([]);
 const solicitudes = ref([]);
 const grupos = ref([]);
@@ -736,10 +743,10 @@ onMounted(cargarDatos);
 
 <style scoped>
 .role-view {
-  background: white;
+  background: var(--surface);
   border-radius: 12px;
   padding: 1.5rem;
-  border: 1px solid #e2e8f0;
+  border: 1px solid var(--border);
 }
 .view-header {
   display: flex;
@@ -755,10 +762,9 @@ onMounted(cargarDatos);
   flex-wrap: wrap;
 }
 .btn-sub {
-  padding: 0.5rem 1rem;
-  background: #f1f5f9;
-  border: 1px solid #cbd5e1;
-  border-radius: 6px;
+  background: var(--primary-subtle);
+  color: var(--text);
+  border: 1px solid var(--primary-text);
   cursor: pointer;
   font-weight: 600;
   display: flex;
@@ -766,26 +772,15 @@ onMounted(cargarDatos);
   gap: 0.3rem;
 }
 .btn-sub.active {
-  background: #1e3a8a;
-  color: white;
+  background: var(--primary);
+  color: var(--on-primary);
+  border-color: var(--primary);
 }
 .sub-header {
   display: flex;
   justify-content: space-between;
   align-items: center;
   margin-bottom: 1rem;
-}
-.btn-primary {
-  background: #1e3a8a;
-  color: white;
-  border: none;
-  padding: 0.6rem 1.2rem;
-  border-radius: 6px;
-  font-weight: 600;
-  cursor: pointer;
-  display: flex;
-  align-items: center;
-  gap: 0.3rem;
 }
 .inline-icon {
   vertical-align: middle;
@@ -796,7 +791,7 @@ onMounted(cargarDatos);
 }
 .data-table th, .data-table td {
   padding: 0.85rem 1rem;
-  border-bottom: 1px solid #e2e8f0;
+  border-bottom: 1px solid var(--border);
   text-align: left;
 }
 .status-badge {
@@ -815,8 +810,8 @@ onMounted(cargarDatos);
 .status-badge.ACTIVO { background: #dcfce7; color: #15803d; }
 .btn-action {
   padding: 0.35rem 0.7rem;
-  border: 1px solid #cbd5e1;
-  background: white;
+  border: 1px solid var(--border);
+  background: var(--surface);
   border-radius: 4px;
   font-weight: 600;
   cursor: pointer;
@@ -824,7 +819,7 @@ onMounted(cargarDatos);
   align-items: center;
   gap: 0.3rem;
 }
-.btn-eval { background: #eff6ff; color: #1e40af; border-color: #bfdbfe; }
+.btn-eval { background: var(--primary-subtle); color: var(--text); border-color: var(--primary-text); }
 .modal-backdrop {
   position: fixed;
   inset: 0;
@@ -836,7 +831,7 @@ onMounted(cargarDatos);
   padding: 1rem;
 }
 .modal-box {
-  background: white;
+  background: var(--surface);
   border-radius: 12px;
   width: 100%;
   max-width: 540px;
@@ -853,25 +848,25 @@ onMounted(cargarDatos);
   display: flex;
   justify-content: space-between;
   align-items: flex-start;
-  border-bottom: 1px solid #e2e8f0;
+  border-bottom: 1px solid var(--border);
   padding-bottom: 0.8rem;
   margin-bottom: 1rem;
 }
 .modal-header h3 {
   margin: 0;
   font-size: 1.25rem;
-  color: #1e293b;
+  color: var(--text);
 }
 .modal-subtitle {
   margin: 0.2rem 0 0 0;
   font-size: 0.85rem;
-  color: #64748b;
+  color: var(--text-muted);
 }
 .btn-close {
   background: transparent;
   border: none;
   cursor: pointer;
-  color: #64748b;
+  color: var(--text-muted);
   padding: 0.3rem;
   border-radius: 6px;
   display: flex;
@@ -879,8 +874,8 @@ onMounted(cargarDatos);
   justify-content: center;
 }
 .btn-close:hover {
-  background: #f1f5f9;
-  color: #0f172a;
+  background: var(--surface-alt);
+  color: var(--text);
 }
 .modal-body-scroll {
   overflow-y: auto;
@@ -892,38 +887,38 @@ onMounted(cargarDatos);
   justify-content: flex-end;
   gap: 0.8rem;
   margin-top: 1.5rem;
-  border-top: 1px solid #e2e8f0;
+  border-top: 1px solid var(--border);
   padding-top: 1rem;
 }
 .section-title {
   font-size: 0.98rem;
   font-weight: 700;
-  color: #1e293b;
+  color: var(--text);
   margin: 1.2rem 0 0.6rem 0;
   padding-bottom: 0.3rem;
-  border-bottom: 1px solid #f1f5f9;
+  border-bottom: 1px solid var(--border);
 }
 .alert-box-info {
-  background: #eff6ff;
-  border: 1px solid #bfdbfe;
-  color: #1e40af;
+  background: var(--primary-subtle);
+  border: 1px solid var(--primary-text);
+  color: var(--text);
   padding: 0.75rem 1rem;
   border-radius: 6px;
   font-size: 0.85rem;
 }
 .form-group { margin-bottom: 1rem; }
-.form-group label { display: block; font-size: 0.85rem; font-weight: 600; margin-bottom: 0.3rem; color: #334155; }
+.form-group label { display: block; font-size: 0.85rem; font-weight: 600; margin-bottom: 0.3rem; color: var(--text); }
 .form-group select, .form-group input, .form-group textarea {
   width: 100%;
   padding: 0.65rem 0.8rem;
-  border: 1px solid #cbd5e1;
+  border: 1px solid var(--border);
   border-radius: 6px;
   box-sizing: border-box;
   font-size: 0.9rem;
 }
 .form-group select:focus, .form-group input:focus, .form-group textarea:focus {
   outline: none;
-  border-color: #0064e0;
+  border-color: var(--border-focus);
   box-shadow: 0 0 0 2px rgba(0, 100, 224, 0.15);
 }
 .form-control-sm {
@@ -935,16 +930,16 @@ onMounted(cargarDatos);
 .sol-check-list {
   max-height: 220px;
   overflow-y: auto;
-  border: 1px solid #e2e8f0;
+  border: 1px solid var(--border);
   padding: 0.5rem;
   border-radius: 6px;
 }
 .sol-check-item {
   padding: 0.4rem;
-  border-bottom: 1px solid #f1f5f9;
+  border-bottom: 1px solid var(--border);
 }
 .auth-desc {
-  color: #64748b;
+  color: var(--text-muted);
   font-size: 0.85rem;
   margin-bottom: 1rem;
 }

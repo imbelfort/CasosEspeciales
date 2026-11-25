@@ -95,7 +95,7 @@
     <div v-if="modalNueva" class="modal-backdrop">
       <div class="modal-box modal-lg modal-container-dialog">
         <div class="modal-header">
-          <h3>CU2: Formulario de Solicitud de Caso Especial</h3>
+          <h3 ref="tituloRegistro" tabindex="-1">CU2: Formulario de Solicitud de Caso Especial</h3>
           <button @click="modalNueva = false" class="btn-close">
             <X :size="18" />
           </button>
@@ -362,7 +362,8 @@
 </template>
 
 <script setup>
-import { ref, onMounted, computed, watch } from 'vue';
+import { ref, onMounted, computed, watch, nextTick } from 'vue';
+import { useRoute, useRouter } from 'vue-router';
 import { 
   Plus, 
   FileSearch, 
@@ -415,6 +416,10 @@ const materiaSeleccionadaMalla = ref(null);
 
 const modalAvance = ref(false);
 const modalNueva = ref(false);
+const tituloRegistro = ref(null);
+const datosInicialesCargados = ref(false);
+const route = useRoute();
+const router = useRouter();
 const modalRespaldo = ref(false);
 const modalPago = ref(false);
 const modalPagoQr = ref(false);
@@ -760,7 +765,25 @@ const subirComprobante = async () => {
   }
 };
 
-onMounted(cargarDatos);
+watch(
+  () => [route.path, route.query.accion, datosInicialesCargados.value, props.usuario],
+  ([path, accion, cargados, usuario]) => {
+    if (path !== '/estudiante' || !cargados || !usuario?.roles?.some(rol => rol.nombre === 'ESTUDIANTE')) return;
+    if (accion !== 'crear' && accion !== 'malla') return;
+
+    if (accion === 'crear') {
+      if (!modalNueva.value) abrirModalRegistro();
+      nextTick(() => tituloRegistro.value?.focus({ preventScroll: true }));
+    }
+    if (accion === 'malla') modalAvance.value = true;
+    router.replace({ path, query: { ...route.query, accion: undefined }, hash: route.hash });
+  },
+);
+
+onMounted(async () => {
+  await cargarDatos();
+  datosInicialesCargados.value = true;
+});
 </script>
 
 <style scoped>
@@ -809,15 +832,15 @@ onMounted(cargarDatos);
 }
 .phase-pill.current {
   background-color: var(--primary);
-  color: #ffffff;
+  color: var(--on-primary);
   border-color: var(--primary);
 }
 
 .role-view {
-  background: white;
+  background: var(--surface);
   border-radius: 12px;
   padding: 1.5rem;
-  border: 1px solid #e2e8f0;
+  border: 1px solid var(--border);
 }
 .view-header {
   display: flex;
@@ -839,17 +862,15 @@ onMounted(cargarDatos);
   flex-shrink: 0;
 }
 .view-desc {
-  color: #64748b;
+  color: var(--text-muted);
   font-size: 0.9rem;
   max-width: 800px;
   margin: 0.3rem 0 0 0;
 }
 .btn-malla {
-  background: #f1f5f9;
-  color: #0f172a;
-  border: 1px solid #cbd5e1;
-  padding: 0.65rem 1.15rem;
-  border-radius: 6px;
+  background: var(--primary-subtle);
+  color: var(--text);
+  border: 1px solid var(--primary-text);
   font-weight: 600;
   cursor: pointer;
   display: inline-flex;
@@ -859,30 +880,7 @@ onMounted(cargarDatos);
   transition: all 0.2s ease;
 }
 .btn-malla:hover {
-  background: #e2e8f0;
-  border-color: #94a3b8;
-  color: #0064e0;
-}
-.btn-primary {
-  background: #1e3a8a;
-  color: white;
-  border: none;
-  padding: 0.65rem 1.25rem;
-  border-radius: 6px;
-  font-weight: 600;
-  cursor: pointer;
-  display: inline-flex;
-  align-items: center;
-  gap: 0.45rem;
-  white-space: nowrap;
-}
-.btn-secondary {
-  background: #64748b;
-  color: white;
-  border: none;
-  padding: 0.6rem 1.2rem;
-  border-radius: 6px;
-  cursor: pointer;
+  background: var(--surface);
 }
 .btn-icon, .inline-icon {
   flex-shrink: 0;
@@ -897,17 +895,17 @@ onMounted(cargarDatos);
 }
 .data-table th, .data-table td {
   padding: 0.85rem 1rem;
-  border-bottom: 1px solid #e2e8f0;
+  border-bottom: 1px solid var(--border);
   text-align: left;
   font-size: 0.9rem;
 }
 .data-table th {
-  background: #f8fafc;
+  background: var(--surface-alt);
   color: #475569;
   font-weight: 600;
 }
 .code-tag {
-  background: #f1f5f9;
+  background: var(--surface-alt);
   padding: 0.2rem 0.5rem;
   border-radius: 4px;
   font-family: monospace;
@@ -932,8 +930,8 @@ onMounted(cargarDatos);
 }
 .btn-action {
   padding: 0.35rem 0.7rem;
-  border: 1px solid #cbd5e1;
-  background: white;
+  border: 1px solid var(--border);
+  background: var(--surface);
   border-radius: 4px;
   font-size: 0.8rem;
   font-weight: 600;
@@ -942,9 +940,9 @@ onMounted(cargarDatos);
   align-items: center;
   gap: 0.3rem;
 }
-.btn-add { background: #eff6ff; color: #1e40af; border-color: #bfdbfe; }
+.btn-add { background: var(--primary-subtle); color: var(--text); border-color: #bfdbfe; }
 .btn-pdf { background: #fef2f2; color: #dc2626; border-color: #fecaca; text-decoration: none; }
-.btn-file { background: #f8fafc; color: #334155; }
+.btn-file { background: var(--surface-alt); color: var(--text); }
 .btn-pay { background: #ecfdf5; color: #065f46; border-color: #a7f3d0; }
 .pay-actions-group {
   display: flex;
@@ -952,8 +950,8 @@ onMounted(cargarDatos);
   flex-wrap: wrap;
 }
 .btn-pay-qr {
-  background: var(--accent, #7c3aed);
-  color: #ffffff;
+  background: var(--primary);
+  color: var(--on-primary);
   border-color: transparent;
 }
 .btn-pay-qr:hover {
@@ -976,7 +974,7 @@ onMounted(cargarDatos);
   overflow-y: auto;
 }
 .modal-box {
-  background: white;
+  background: var(--surface);
   border-radius: 12px;
   width: 100%;
   max-width: 520px;
@@ -999,16 +997,16 @@ onMounted(cargarDatos);
   display: flex;
   justify-content: space-between;
   align-items: center;
-  border-bottom: 1px solid #e2e8f0;
+  border-bottom: 1px solid var(--border);
   padding-bottom: 0.8rem;
 }
-.btn-close { background: transparent; border: none; cursor: pointer; color: #64748b; }
+.btn-close { background: transparent; border: none; cursor: pointer; color: var(--text-muted); }
 .form-group { margin-bottom: 1rem; }
 .form-group label { display: block; font-size: 0.85rem; font-weight: 600; margin-bottom: 0.3rem; }
 .form-group select, .form-group input, .form-group textarea {
   width: 100%;
   padding: 0.65rem 0.8rem;
-  border: 1px solid #cbd5e1;
+  border: 1px solid var(--border);
   border-radius: 6px;
 }
 .modal-footer {
@@ -1020,21 +1018,21 @@ onMounted(cargarDatos);
 .row { display: flex; gap: 1rem; }
 .col { flex: 1; }
 .alert-box-info {
-  background: #eff6ff;
+  background: var(--primary-subtle);
   border-left: 4px solid #3b82f6;
   padding: 0.8rem 1rem;
   font-size: 0.9rem;
-  color: #1e40af;
+  color: var(--text);
 }
 .clean-list { list-style: none; padding: 0; }
-.clean-list li { padding: 0.4rem 0; border-bottom: 1px solid #f1f5f9; display: flex; align-items: center; gap: 0.4rem; }
-.timeline { border-left: 2px solid #e2e8f0; padding-left: 1rem; margin-top: 1rem; }
+.clean-list li { padding: 0.4rem 0; border-bottom: 1px solid var(--border); display: flex; align-items: center; gap: 0.4rem; }
+.timeline { border-left: 2px solid var(--border); padding-left: 1rem; margin-top: 1rem; }
 .timeline-item { position: relative; margin-bottom: 1rem; }
 .timeline-dot { position: absolute; left: -1.35rem; top: 0.2rem; width: 10px; height: 10px; background: #1e3a8a; border-radius: 50%; }
 .banner-aviso-info {
-  background: #eff6ff;
-  border: 1px solid #bfdbfe;
-  color: #1e40af;
+  background: var(--primary-subtle);
+  border: 1px solid var(--primary-text);
+  color: var(--text);
   padding: 0.8rem 1.2rem;
   border-radius: 8px;
   margin-bottom: 1.2rem;
@@ -1056,8 +1054,8 @@ onMounted(cargarDatos);
   font-size: 0.9rem;
 }
 .materias-builder-section {
-  background: #f8fafc;
-  border: 1px solid #e2e8f0;
+  background: var(--surface-alt);
+  border: 1px solid var(--border);
   border-radius: 8px;
   padding: 1rem;
   margin-bottom: 1rem;
@@ -1086,8 +1084,8 @@ onMounted(cargarDatos);
   background: #fecaca;
 }
 .documentos-card-box {
-  background: #f8fafc;
-  border: 1px solid #cbd5e1;
+  background: var(--surface-alt);
+  border: 1px solid var(--border);
   border-radius: 8px;
   padding: 1rem;
 }
@@ -1101,7 +1099,7 @@ onMounted(cargarDatos);
 .form-control-sm {
   padding: 0.35rem 0.5rem;
   font-size: 0.85rem;
-  border: 1px solid #cbd5e1;
+  border: 1px solid var(--border);
   border-radius: 4px;
   width: 100%;
 }

@@ -145,13 +145,14 @@ onMounted(async () => {
   display: flex;
   align-items: center;
   gap: 0.4rem;
-  padding: 0.45rem 0.95rem;
+  padding: 0.45rem 0.8rem;
   text-decoration: none;
   color: var(--text-muted);
   font-weight: 600;
   border-radius: var(--radius-pill, 100px);
   transition: all 0.15s ease;
-  font-size: 0.88rem;
+  font-size: 0.82rem;
+  line-height: 1.35;
   border: 1px solid transparent;
 }
 .nav-link:hover {
@@ -159,8 +160,8 @@ onMounted(async () => {
   color: var(--text);
 }
 .nav-link.router-link-exact-active, .nav-link.active {
-  background: var(--ink-button);
-  color: var(--ink-button-text);
+  background: var(--primary);
+  color: var(--on-primary);
 }
 .nav-link:focus-visible {
   outline: 2px solid var(--text);

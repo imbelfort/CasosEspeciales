@@ -186,10 +186,8 @@ details .opciones { margin-top: .75rem; }
 details button { margin-top: .75rem; }
 summary { cursor: pointer; min-height: 44px; align-content: center; }
 .opcion-estado { display: inline-flex; align-items: center; gap: .5rem; min-height: 44px; cursor: pointer; }
-.opcion-estado input { accent-color: var(--ink-button); width: 1rem; height: 1rem; }
-.reportes .btn { min-height: 44px; background: var(--surface); color: var(--text); border-color: var(--text-muted); }
-.reportes .btn:hover:enabled { background: var(--surface-alt); }
-.reportes .btn[aria-pressed="true"] { background: var(--ink-button); color: var(--ink-button-text); border-color: var(--ink-button); }
+.opcion-estado input { accent-color: var(--primary); width: 1rem; height: 1rem; }
+.reportes .btn[aria-pressed="true"] { background: var(--primary); color: var(--on-primary); border-color: var(--primary); }
 .reportes .btn:disabled { cursor: default; background: var(--surface-alt); color: var(--text-muted); }
 .reportes :is(button, input, summary):focus-visible { outline: 2px solid var(--text); outline-offset: 2px; }
 .barras { display: grid; gap: .65rem; }

@@ -13,7 +13,7 @@
       <label>Dirección IP <input v-model.trim="filtros.ip" maxlength="45" /></label>
       <label>Desde <input v-model="filtros.desde" type="date" /></label>
       <label>Hasta <input v-model="filtros.hasta" type="date" :min="filtros.desde || undefined" /></label>
-      <button class="btn accion-principal" type="submit" :disabled="cargando">Consultar</button>
+      <button class="btn btn-primary" type="submit" :disabled="cargando">Consultar</button>
       <button class="btn accion-secundaria" type="button" :disabled="cargando" @click="limpiar">Limpiar</button>
     </form>
 
@@ -148,17 +148,10 @@ onMounted(() => cargar());
   background: var(--surface);
   font: inherit;
 }
-.bitacora .btn { min-height: 44px; }
-.accion-principal, .accion-principal:hover {
-  background: var(--ink-button);
-  color: var(--ink-button-text);
-  border-color: var(--ink-button);
-}
-.accion-principal:hover:enabled { text-decoration: underline; }
 .accion-secundaria {
-  background: var(--surface);
+  background: var(--primary-subtle);
   color: var(--text);
-  border-color: var(--text-muted);
+  border-color: var(--primary-text);
 }
 .accion-secundaria:hover:enabled, .recurso:hover:enabled { background: var(--surface-alt); }
 .bitacora :is(button, input, select):focus-visible {

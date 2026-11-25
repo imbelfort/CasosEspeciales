@@ -84,10 +84,10 @@ onMounted(cargarNotificaciones);
 
 <style scoped>
 .role-view {
-  background: white;
+  background: var(--surface);
   border-radius: 12px;
   padding: 1.5rem;
-  border: 1px solid #e2e8f0;
+  border: 1px solid var(--border);
 }
 .view-header {
   display: flex;
@@ -96,20 +96,9 @@ onMounted(cargarNotificaciones);
   margin-bottom: 1.5rem;
 }
 .view-desc {
-  color: #64748b;
+  color: var(--text-muted);
   font-size: 0.9rem;
   margin: 0.2rem 0 0 0;
-}
-.btn-secondary {
-  background: #64748b;
-  color: white;
-  border: none;
-  padding: 0.6rem 1.2rem;
-  border-radius: 6px;
-  cursor: pointer;
-  display: flex;
-  align-items: center;
-  gap: 0.3rem;
 }
 .inline-icon {
   vertical-align: middle;
@@ -123,13 +112,13 @@ onMounted(cargarNotificaciones);
   display: flex;
   gap: 1rem;
   padding: 1.2rem;
-  border: 1px solid #e2e8f0;
+  border: 1px solid var(--border);
   border-radius: 8px;
-  background: #f8fafc;
+  background: var(--surface-alt);
   transition: all 0.2s;
 }
 .notif-card.no-leida {
-  background: white;
+  background: var(--surface);
   border-left: 4px solid #1e3a8a;
   box-shadow: 0 2px 4px rgba(0,0,0,0.05);
 }
@@ -148,7 +137,7 @@ onMounted(cargarNotificaciones);
 .notif-header h4 {
   margin: 0;
   font-size: 1rem;
-  color: #0f172a;
+  color: var(--text);
 }
 .notif-time {
   font-size: 0.8rem;
