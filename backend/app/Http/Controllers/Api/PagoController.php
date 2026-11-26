@@ -8,18 +8,21 @@ use App\Models\Solicitud;
 use App\Services\AuditoriaNotificacionService;
 use App\Services\ConfirmacionPagoService;
 use App\Services\PagoFacilService;
+use App\Services\StripeCheckoutService;
 use Carbon\Carbon;
 use Exception;
+use Illuminate\Http\Client\ConnectionException;
+use Illuminate\Http\Client\RequestException;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
-use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Str;
+use Stripe\Exception\ApiErrorException;
 
 class PagoController extends Controller
 {
     protected PagoFacilService $pagoFacilService;
 
-    public function __construct(PagoFacilService $pagoFacilService)
+    public function __construct(PagoFacilService $pagoFacilService, private StripeCheckoutService $stripe)
     {
         $this->pagoFacilService = $pagoFacilService;
     }
@@ -60,30 +63,59 @@ class PagoController extends Controller
             ]);
         }
 
-        // Si ya hay un QR pendiente y no ha expirado, reutilizarlo
-        if (PagoTransaccion::where('id_solicitud', $solicitud->id)->where('pasarela', 'STRIPE')->where('estado', 'PENDIENTE')->exists()) {
-            return response()->json(['error' => 'Hay un pago con tarjeta pendiente para esta solicitud.'], 409);
+        if ($solicitud->archivos()->where('tipo_archivo', 'BOLETA_PENDIENTE')->exists()) {
+            return response()->json(['error' => 'Tu boleta está pendiente de revisión por Dirección.'], 409);
+        }
+
+        if (!$request->boolean('cerrar_stripe') && PagoTransaccion::where('id_solicitud', $solicitud->id)
+            ->where('pasarela', 'STRIPE')->where('estado', 'PENDIENTE')->exists()) {
+            return response()->json([
+                'error' => 'Hay un intento de pago por Stripe. Para usar QR, primero debe cerrarse.',
+                'codigo' => 'STRIPE_PENDIENTE',
+            ], 409);
+        }
+
+        try {
+            $tarjeta = $this->stripe->cerrarPendiente($solicitud->id);
+        } catch (ApiErrorException $error) {
+            return $this->stripe->errorProveedor($error);
+        }
+        if ($tarjeta?->estado === 'PAGADO') {
+            return response()->json(['pago' => $tarjeta]);
+        }
+        if ($tarjeta?->estado === 'PENDIENTE') {
+            return response()->json(['error' => 'Stripe aún está procesando el pago. Vuelve a consultar en unos minutos.'], 409);
         }
 
         $qrPendiente = PagoTransaccion::where('id_solicitud', $solicitud->id)
-            ->where('pasarela', 'PAGOFACIL_QR')
-            ->where('estado', 'PENDIENTE')
-            ->where(function ($query) {
-                $query->whereNull('fecha_expiracion')
-                    ->orWhere('fecha_expiracion', '>', now());
-            })
-            ->latest()
-            ->first();
-
-        if ($qrPendiente && !empty($qrPendiente->qr_base64)) {
+            ->where('pasarela', 'PAGOFACIL_QR')->where('estado', 'PENDIENTE')->first();
+        if ($qrPendiente && (!$qrPendiente->qr_base64 || $qrPendiente->fecha_expiracion?->isPast())) {
+            try {
+                $this->pagoFacilService->sincronizar($qrPendiente);
+            } catch (Exception $error) {
+                report($error);
+                return response()->json(['error' => 'No se pudo verificar el QR anterior. Inténtalo en unos minutos.'], 502);
+            }
+        }
+        if ($qrPendiente?->estado === 'PAGADO') {
+            return response()->json(['pago' => $qrPendiente]);
+        }
+        if ($qrPendiente?->estado === 'PENDIENTE') {
+            if (!$qrPendiente->qr_base64) {
+                return response()->json(['error' => 'Hay un cobro QR pendiente de conciliación.'], 409);
+            }
             return response()->json([
                 'message' => 'QR existente pendiente de pago.',
-                'pago' => $qrPendiente
+                'pago' => $qrPendiente,
+                'modo_sandbox' => str_starts_with($qrPendiente->pagofacil_transaction_id ?? '', 'DEMO-'),
             ]);
         }
 
         // Obtener arancel configurado en el periodo académico (por defecto 10.00 Bs oficial de la UAGRM)
         $monto = (float) ($solicitud->periodo?->costo_arancel_caso ?? env('PAGOFACIL_COSTO_CASO_ESPECIAL', 10.00));
+        if ($monto <= 0) {
+            return response()->json(['error' => 'El arancel debe ser mayor que cero.'], 422);
+        }
         $numeroPago = 'CASO-' . $solicitud->id . '-' . strtoupper(Str::random(6));
 
         $nombreCliente = trim(($user->nombre ?? '') . ' ' . ($user->apellidos ?? ''));
@@ -136,9 +168,13 @@ class PagoController extends Controller
                     'deep_link' => $values['deepLink'] ?? null,
                     'qr_content_url' => $values['qrContentUrl'] ?? null,
                     'universal_url' => $values['universalUrl'] ?? null,
-                    'fecha_expiracion' => !empty($values['expirationDate']) ? Carbon::parse($values['expirationDate']) : now()->addHours(24),
+                    'fecha_expiracion' => !empty($values['expirationDate']) ? Carbon::parse($values['expirationDate']) : null,
                 ]);
             } else {
+                if (!app()->environment('local', 'testing')) {
+                    $pago->update(['estado' => 'FALLIDO']);
+                    return response()->json(['error' => 'El pago por QR no está disponible en este momento.'], 503);
+                }
                 // Modo Sandbox / Demo (cuando las credenciales aún no han sido suministradas)
                 // Genera un SVG en Base64 representativo para pruebas visuales inmediatas
                 $qrSvgDemo = base64_encode(
@@ -179,43 +215,33 @@ class PagoController extends Controller
             ], 201);
 
         } catch (Exception $e) {
-            $pago->update(['estado' => 'FALLIDO']);
+            $incierto = $e instanceof ConnectionException || ($e instanceof RequestException && $e->response->serverError());
+            if (!$incierto) {
+                $pago->update(['estado' => 'FALLIDO']);
+            }
             return response()->json([
-                'error' => 'No se pudo generar el QR en PagoFácil: ' . $e->getMessage()
-            ], 500);
+                'error' => $incierto
+                    ? 'PagoFácil no respondió. El intento queda pendiente de verificación.'
+                    : 'No se pudo generar el QR en PagoFácil. Inténtalo nuevamente.',
+            ], 502);
         }
     }
 
     /**
      * Consultar estado de una transacción de pago
      */
-    public function consultarEstado($idPago)
+    public function consultarEstado(Request $request, $idPago)
     {
         $pago = PagoTransaccion::with('solicitud')->where('pasarela', 'PAGOFACIL_QR')->findOrFail($idPago);
+        $user = $request->user();
+        abort_unless($pago->solicitud?->id_estudiante === $user->id_usuario || $pago->id_usuario === $user->id_usuario
+            || $user->tieneRol('DIRECTOR') || $user->tieneRol('PERSONAL_ACADEMICO'), 403);
 
-        if ($pago->estado === 'PAGADO') {
-            return response()->json([
-                'estado' => 'PAGADO',
-                'pago' => $pago,
-                'mensaje' => 'La transacción ya ha sido pagada y confirmada.'
-            ]);
-        }
-
-        // Consultar API si tiene credenciales
-        if ($this->pagoFacilService->tieneCredenciales() && $pago->numero_pago) {
-            try {
-                $resultado = $this->pagoFacilService->consultarTransaccion($pago->numero_pago);
-                $pago->payload_consulta = $resultado;
-
-                // Si paymentStatus indica pagado (o viene paymentDate confirmada)
-                if (!empty($resultado['paymentDate']) || ($resultado['paymentStatus'] ?? null) == 1) {
-                    $this->confirmarPagoExitoso($pago, $resultado, 'CONSULTA_API');
-                } else {
-                    $pago->save();
-                }
-            } catch (Exception $e) {
-                Log::warning('Error consultando transacción PagoFácil', ['error' => $e->getMessage()]);
-            }
+        try {
+            $this->pagoFacilService->sincronizar($pago);
+        } catch (Exception $error) {
+            report($error);
+            return response()->json(['error' => 'No se pudo consultar el pago en PagoFácil.'], 502);
         }
 
         return response()->json([
@@ -229,9 +255,6 @@ class PagoController extends Controller
      */
     public function callbackWebhook(Request $request)
     {
-        $payload = $request->all();
-        Log::info('PagoFacil Callback recibido', $payload);
-
         $pedidoId = $request->input('PedidoID') ?? $request->input('pedidoId') ?? $request->input('companyTransactionId');
 
         if (!$pedidoId) {
@@ -264,8 +287,16 @@ class PagoController extends Controller
             ], 200);
         }
 
-        // Confirmar pago y actualizar solicitud
-        $this->confirmarPagoExitoso($pago, $payload, 'WEBHOOK_CALLBACK');
+        // El callback inicia la consulta. El estado se verifica por el canal autenticado.
+        try {
+            $this->pagoFacilService->sincronizar($pago);
+        } catch (Exception $error) {
+            report($error);
+            return response()->json(['error' => 1, 'status' => 0, 'message' => 'No se pudo verificar el pago.', 'values' => false], 503);
+        }
+        if ($pago->estado === 'PENDIENTE') {
+            return response()->json(['error' => 1, 'status' => 0, 'message' => 'Pago pendiente de confirmación.', 'values' => false], 503);
+        }
 
         // Acuse esperado por PagoFácil (Sección 8 p. 297)
         return response()->json([
@@ -285,25 +316,26 @@ class PagoController extends Controller
         abort_unless(app()->environment('local', 'testing') && !$this->pagoFacilService->tieneCredenciales(), 403);
         $pago = PagoTransaccion::where('pasarela', 'PAGOFACIL_QR')->where('id_usuario', $user->id_usuario)->findOrFail($idPago);
 
-        if ($pago->estado === 'PAGADO') {
-            return response()->json(['message' => 'El pago ya estaba confirmado.', 'pago' => $pago]);
-        }
+        return DB::transaction(function () use ($pago, $user) {
+            $solicitud = Solicitud::lockForUpdate()->findOrFail($pago->id_solicitud);
+            $pago->refresh();
+            if ($pago->estado === 'PAGADO') {
+                return response()->json(['message' => 'El pago ya estaba confirmado.', 'pago' => $pago]);
+            }
 
-        $payloadSimulado = [
-            'PedidoID' => $pago->numero_pago,
-            'Fecha' => now()->format('Y-m-d'),
-            'Hora' => now()->format('H:i:s'),
-            'MetodoPago' => 'QR BANCA MOVIL (SIMULADOR)',
-            'Estado' => 'COMPLETADO',
-            'SimuladoPor' => $user->email,
-        ];
+            abort_unless($pago->estado === 'PENDIENTE' && $pago->fecha_expiracion?->isFuture()
+                && str_starts_with($pago->pagofacil_transaction_id ?? '', 'DEMO-')
+                && $solicitud->estado === 'APROBADA_DIRECCION', 409, 'El QR simulado ya no está vigente.');
 
-        $this->confirmarPagoExitoso($pago, $payloadSimulado, 'SIMULACION_DEMO');
+            app(ConfirmacionPagoService::class)->confirmar($pago, [
+                'PedidoID' => $pago->numero_pago,
+                'MetodoPago' => 'QR BANCA MOVIL (SIMULADOR)',
+                'Estado' => 'COMPLETADO',
+                'SimuladoPor' => $user->email,
+            ], 'SIMULACION_DEMO');
 
-        return response()->json([
-            'message' => 'Pago confirmado exitosamente en modo simulación.',
-            'pago' => $pago
-        ]);
+            return response()->json(['message' => 'Pago confirmado en modo simulación.', 'pago' => $pago]);
+        });
     }
 
     public function validarPagoManual(Request $request, $idSolicitud)
@@ -327,8 +359,29 @@ class PagoController extends Controller
                 return response()->json(['error' => 'La solicitud debe estar aprobada por Dirección para validar el pago.'], 422);
             }
 
-            if (PagoTransaccion::where('id_solicitud', $solicitud->id)->where('pasarela', 'STRIPE')->where('estado', 'PENDIENTE')->exists()) {
-                return response()->json(['error' => 'Hay un pago con tarjeta pendiente para esta solicitud.'], 409);
+            try {
+                $tarjeta = $this->stripe->cerrarPendiente($solicitud->id);
+            } catch (ApiErrorException $error) {
+                return $this->stripe->errorProveedor($error);
+            }
+            if ($tarjeta?->estado === 'PAGADO') {
+                return response()->json(['message' => 'Stripe ya confirmó el pago.', 'pago' => $tarjeta]);
+            }
+            if ($tarjeta?->estado === 'PENDIENTE') {
+                return response()->json(['error' => 'Stripe aún está procesando el pago.'], 409);
+            }
+
+            try {
+                $qr = $this->pagoFacilService->conciliarPendiente($solicitud->id);
+            } catch (Exception $error) {
+                report($error);
+                return response()->json(['error' => 'No se pudo verificar el pago QR. Inténtalo en unos minutos.'], 502);
+            }
+            if ($qr?->estado === 'PAGADO') {
+                return response()->json(['message' => 'PagoFácil ya confirmó el pago.', 'pago' => $qr]);
+            }
+            if ($qr?->estado === 'PENDIENTE') {
+                return response()->json(['error' => 'Hay un QR vigente. Espera a que venza o se confirme antes de validar otro pago.'], 409);
             }
 
             $pago ??= PagoTransaccion::create([
@@ -342,6 +395,8 @@ class PagoController extends Controller
                 'metodo_pago_nombre' => 'Validación manual',
             ]);
 
+            $solicitud->archivos()->where('tipo_archivo', 'BOLETA_PENDIENTE')->update(['tipo_archivo' => 'COMPROBANTE_PAGO']);
+
             AuditoriaNotificacionService::registrarTransicion(
                 $solicitud,
                 'APROBADA',
@@ -354,14 +409,6 @@ class PagoController extends Controller
 
             return response()->json(['message' => 'Pago validado manualmente.', 'pago' => $pago]);
         });
-    }
-
-    /**
-     * Transición atómica a pagado y actualización de la solicitud (Pautas 2 y 3 de la Guía)
-     */
-    protected function confirmarPagoExitoso(PagoTransaccion $pago, array $payload, string $origen): void
-    {
-        app(ConfirmacionPagoService::class)->confirmar($pago, $payload, $origen);
     }
 
     /**

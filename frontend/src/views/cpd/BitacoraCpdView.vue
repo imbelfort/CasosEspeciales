@@ -23,9 +23,9 @@
     <template v-if="datos && !error">
       <section>
         <h2>Índice de acceso por recurso</h2>
-        <div v-if="datos.recursos.length" class="tabla">
-          <table>
-            <thead><tr><th>Recurso</th><th>Total</th><th>Exitosos</th><th>Fallidos</th><th>IP distintas</th><th>Último acceso</th></tr></thead>
+        <div v-if="datos.recursos.length" class="table-responsive" tabindex="0" role="region" aria-label="Recursos consultados">
+          <table class="data-table">
+            <thead><tr><th scope="col">Recurso</th><th scope="col">Total</th><th scope="col">Exitosos</th><th scope="col">Fallidos</th><th scope="col">IP distintas</th><th scope="col">Último acceso</th></tr></thead>
             <tbody>
               <tr v-for="item in datos.recursos" :key="item.metodo + item.recurso">
                 <td>
@@ -48,9 +48,9 @@
           {{ aplicados.metodo }} {{ aplicados.recurso }}
           <button class="btn accion-secundaria" type="button" :disabled="cargando" @click="filtrarRecurso({})">Quitar filtro de recurso</button>
         </p>
-        <div v-if="datos.eventos.data.length" class="tabla">
-          <table>
-            <thead><tr><th>Fecha y hora</th><th>Evento</th><th>Cuenta</th><th>IP</th><th>Recurso</th><th>Referencia</th><th>HTTP</th></tr></thead>
+        <div v-if="datos.eventos.data.length" class="table-responsive" tabindex="0" role="region" aria-label="Eventos de bitácora">
+          <table class="data-table">
+            <thead><tr><th scope="col">Fecha y hora</th><th scope="col">Evento</th><th scope="col">Cuenta</th><th scope="col">IP</th><th scope="col">Recurso</th><th scope="col">Referencia</th><th scope="col">HTTP</th></tr></thead>
             <tbody>
               <tr v-for="item in datos.eventos.data" :key="item.id">
                 <td>{{ fechaLocal(item.fecha) }}</td><td>{{ eventos[item.evento] }}</td>
@@ -164,10 +164,6 @@ onMounted(() => cargar());
   color: var(--text-muted);
   cursor: default;
 }
-.tabla { overflow-x: auto; border: 1px solid var(--border); border-radius: var(--radius-lg); background: var(--surface); }
-table { width: 100%; border-collapse: collapse; }
-th, td { padding: .65rem .75rem; text-align: left; white-space: nowrap; }
-th, tr + tr td { border-bottom: 1px solid var(--border); }
 .recurso { padding-inline: .6rem; background: transparent; color: var(--text); text-decoration: underline; }
 .paginas { margin-top: .75rem; align-items: center; }
 [role="alert"] { padding: .75rem; border: 1px solid currentColor; color: var(--text); }

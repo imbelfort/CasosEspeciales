@@ -74,8 +74,8 @@
             </div>
           </div>
 
-          <div class="tabla">
-            <table>
+          <div class="table-responsive" tabindex="0" role="region" aria-label="Desglose por estado">
+            <table class="data-table">
               <caption>Detalle por estado</caption>
               <thead><tr><th scope="col">Estado</th><th scope="col">Cantidad</th><th scope="col">Porcentaje</th></tr></thead>
               <tbody>
@@ -225,14 +225,9 @@ onMounted(cargarReportes);
 .dona-centro { display: grid; place-content: center; text-align: center; width: 68%; aspect-ratio: 1; border-radius: 50%; background: var(--surface); }
 .dona-centro strong { font-size: 1.65rem; line-height: 1.15; }
 .dona-centro small { color: var(--text-muted); }
-.tabla { overflow-x: auto; min-width: 0; }
-table { width: 100%; border-collapse: collapse; font-size: .86rem; }
 table caption { text-align: start; font-size: .9rem; font-weight: 700; padding: .35rem .5rem .65rem; }
-table :is(th, td) { padding: .65rem .5rem; text-align: start; border-bottom: 1px solid var(--border); }
-thead th { color: var(--text-muted); background: var(--surface-alt); font-size: .78rem; }
 table td { text-align: end; font-variant-numeric: tabular-nums; }
 thead th:not(:first-child) { text-align: end; }
-tbody th { font-weight: 500; }
 .muestra { display: inline-block; inline-size: .6rem; block-size: .6rem; margin-inline-end: .3rem; border-radius: 50%; }
 .mensaje { padding: .8rem 1rem; border-radius: var(--radius-lg); background: var(--surface-alt); color: var(--text); }
 .mensaje.error { border-inline-start: 3px solid var(--danger); }

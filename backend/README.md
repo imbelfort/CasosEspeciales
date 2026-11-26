@@ -29,7 +29,11 @@ El botón de tarjeta se habilita con una cuenta de Stripe Payments de un país a
 
 CPD define el importe en **Parámetros y arancel** y consulta las transacciones en **Pagos con tarjeta**. Checkout usa ese importe al crear cada sesión, por lo que no hace falta crear un producto o precio en el panel de Stripe.
 
-En Stripe configura el endpoint HTTPS `/api/pagos/stripe/webhook` con los eventos `checkout.session.completed` y `checkout.session.expired`. Para pruebas locales, reenvíalos con `stripe listen --events checkout.session.completed,checkout.session.expired --forward-to localhost:8000/api/pagos/stripe/webhook` y usa el secreto que muestra Stripe CLI. La solicitud se actualiza cuando Laravel recibe la confirmación firmada.
+En Stripe configura el endpoint HTTPS `/api/pagos/stripe/webhook` con los eventos `checkout.session.completed`, `checkout.session.expired`, `checkout.session.async_payment_succeeded` y `checkout.session.async_payment_failed`. Para pruebas locales, reenvíalos con `stripe listen --events checkout.session.completed,checkout.session.expired,checkout.session.async_payment_succeeded,checkout.session.async_payment_failed --forward-to localhost:8000/api/pagos/stripe/webhook` y usa el secreto que muestra Stripe CLI.
+
+Checkout se abre en la misma pestaña. Laravel confirma el pago mediante el webhook firmado o una consulta autenticada a Stripe al volver del checkout. Si el frontend de producción y Laravel se sirven desde orígenes distintos, configura `VITE_API_URL` con la URL del backend terminada en `/api` antes de compilar el frontend.
+
+Para cambiar de Stripe a QR, el estudiante puede cerrar el intento de tarjeta desde el modal de QR. Un QR vigente se conserva hasta que se confirme o venza. Dirección puede verificar un pago externo, consultar una boleta pendiente y validarla u observarla. Si Stripe o PagoFácil deja incierto el resultado de un intento, se conserva como pendiente hasta poder conciliarlo.
 
 ## About Laravel
 

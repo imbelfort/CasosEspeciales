@@ -2,6 +2,7 @@
 
 namespace App\Services;
 
+use App\Models\PagoTransaccion;
 use Exception;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Log;
@@ -128,7 +129,8 @@ class PagoFacilService
                 'body' => $response->body(),
                 'payload' => $payload
             ]);
-            throw new Exception("Error al generar QR en PagoFácil: HTTP " . $response->status() . " - " . $response->body());
+            $response->throw();
+            throw new Exception("Error al generar QR en PagoFácil: HTTP " . $response->status());
         }
 
         $json = $response->json();
@@ -165,5 +167,45 @@ class PagoFacilService
 
         $json = $response->json();
         return $json['values'] ?? [];
+    }
+
+    public function sincronizar(PagoTransaccion $pago): void
+    {
+        if (!in_array($pago->estado, ['PENDIENTE', 'EXPIRADO', 'FALLIDO'], true)) {
+            return;
+        }
+
+        $vencido = $pago->fecha_expiracion?->isPast();
+        $demo = str_starts_with($pago->pagofacil_transaction_id ?? '', 'DEMO-');
+        if (!$demo) {
+            $resultado = $this->consultarTransaccion($pago->numero_pago);
+            if (!isset($resultado['paymentStatus']) && empty($resultado['paymentDate'])) {
+                throw new Exception('PagoFácil no devolvió el estado de la transacción.');
+            }
+            if (!empty($resultado['paymentDate']) || in_array($resultado['paymentStatus'], [1, '1'], true)) {
+                app(ConfirmacionPagoService::class)->confirmar($pago, $resultado, 'CONSULTA_PAGOFACIL');
+                return;
+            }
+            if (!$pago->fecha_expiracion && !empty($resultado['expirationDate'])) {
+                $pago->update(['fecha_expiracion' => $resultado['expirationDate']]);
+            }
+        }
+
+        if ($vencido) {
+            PagoTransaccion::whereKey($pago->id)->where('estado', 'PENDIENTE')->update(['estado' => 'EXPIRADO']);
+            $pago->refresh();
+        }
+    }
+
+    // El bloqueo de la solicitud debe mantenerse durante la conciliación y el cambio de método.
+    public function conciliarPendiente(int $idSolicitud): ?PagoTransaccion
+    {
+        $pago = PagoTransaccion::where('id_solicitud', $idSolicitud)
+            ->where('pasarela', 'PAGOFACIL_QR')->where('estado', 'PENDIENTE')->first();
+        if ($pago) {
+            $this->sincronizar($pago);
+        }
+
+        return $pago;
     }
 }

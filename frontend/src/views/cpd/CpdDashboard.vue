@@ -25,34 +25,36 @@
         <span class="status-badge REMITIDA_A_CPD">Emitido</span>
       </div>
 
-      <table class="data-table mt-3">
-        <thead>
-          <tr>
-            <th>Código Solicitud</th>
-            <th>Estudiante</th>
-            <th>Registro</th>
-            <th>Materia / Grupo</th>
-            <th>Acción Técnica</th>
-          </tr>
-        </thead>
-        <tbody>
-          <tr v-for="sol in oficio.solicitudes" :key="sol.id">
-            <td><strong>{{ sol.codigo }}</strong></td>
-            <td>{{ sol.estudiante?.usuario?.nombre }} {{ sol.estudiante?.usuario?.apellidos }}</td>
-            <td>{{ sol.estudiante?.registro_universitario }}</td>
-            <td>
-              <div v-for="sg in sol.grupos" :key="sg.id">
-                {{ sg.grupo?.materia?.sigla }} - Gr. {{ sg.grupo?.sigla_grupo }}
-              </div>
-            </td>
-            <td>
-              <button @click="abrirRespuesta(oficio, sol)" class="btn-action btn-pay">
-                <CheckSquare :size="14" class="inline-icon" /> Resolver CPD (CU6)
-              </button>
-            </td>
-          </tr>
-        </tbody>
-      </table>
+      <div class="table-responsive mt-3" tabindex="0" role="region" aria-label="Solicitudes del oficio">
+        <table class="data-table">
+          <thead>
+            <tr>
+              <th scope="col">Código Solicitud</th>
+              <th scope="col">Estudiante</th>
+              <th scope="col">Registro</th>
+              <th scope="col">Materia / Grupo</th>
+              <th scope="col">Acción Técnica</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr v-for="sol in oficio.solicitudes" :key="sol.id">
+              <td><strong>{{ sol.codigo }}</strong></td>
+              <td>{{ sol.estudiante?.usuario?.nombre }} {{ sol.estudiante?.usuario?.apellidos }}</td>
+              <td>{{ sol.estudiante?.registro_universitario }}</td>
+              <td>
+                <div v-for="sg in sol.grupos" :key="sg.id">
+                  {{ sg.grupo?.materia?.sigla }} - Gr. {{ sg.grupo?.sigla_grupo }}
+                </div>
+              </td>
+              <td>
+                <button @click="abrirRespuesta(oficio, sol)" class="btn-action btn-pay">
+                  <CheckSquare :size="14" class="inline-icon" /> Resolver CPD (CU6)
+                </button>
+              </td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
     </div>
 
     <div v-if="oficios.length === 0" class="no-records">
@@ -64,17 +66,17 @@
       <p v-if="errorPagosStripe" role="status">{{ errorPagosStripe }}</p>
       <p v-else-if="cargandoPagosStripe" role="status">Cargando pagos…</p>
       <p v-else-if="!pagosStripe?.data.length">Aún no hay pagos con tarjeta registrados.</p>
-      <div v-else class="table-responsive">
+      <div v-else class="table-responsive" tabindex="0" role="region" aria-label="Pagos con tarjeta">
         <table class="data-table">
           <thead>
-            <tr><th>Solicitud</th><th>Estudiante</th><th>Arancel</th><th>Estado del pago</th></tr>
+            <tr><th scope="col">Solicitud</th><th scope="col">Estudiante</th><th scope="col">Arancel</th><th scope="col">Estado del pago</th></tr>
           </thead>
           <tbody>
             <tr v-for="pago in pagosStripe.data" :key="pago.id">
               <td>{{ pago.solicitud?.codigo }}</td>
               <td>{{ pago.usuario?.nombre }} {{ pago.usuario?.apellidos }}</td>
               <td>{{ formatoArancel.format(pago.monto) }}</td>
-              <td>{{ estadosPago[pago.estado] || pago.estado }}</td>
+              <td><span :class="['status-badge', pago.estado]">{{ estadosPago[pago.estado] || pago.estado }}</span></td>
             </tr>
           </tbody>
         </table>
@@ -198,13 +200,13 @@
           <!-- Selección granular de materias habilitadas por CPD -->
           <div v-if="solicitudActiva.grupos && solicitudActiva.grupos.length > 0" class="form-group">
             <label>Habilitación Técnica por Asignatura (CPD habilita cupo final):</label>
-            <div class="table-responsive">
+            <div class="table-responsive" tabindex="0" role="region" aria-label="Respuesta por materia">
               <table class="data-table">
                 <thead>
                   <tr>
-                    <th>Materia / Grupo</th>
-                    <th>Estado de Habilitación</th>
-                    <th>Observación Técnica</th>
+                    <th scope="col">Materia / Grupo</th>
+                    <th scope="col">Estado de Habilitación</th>
+                    <th scope="col">Observación Técnica</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -415,8 +417,8 @@ onMounted(cargarPendientes);
 <style scoped>
 .role-view {
   background: var(--surface);
-  border-radius: 12px;
-  padding: 1.5rem;
+  border-radius: var(--radius-xl);
+  padding: clamp(1rem, 3vw, 1.5rem);
   border: 1px solid var(--border);
 }
 .view-header {
@@ -429,7 +431,7 @@ onMounted(cargarPendientes);
 }
 .header-text {
   flex: 1;
-  min-width: 280px;
+  min-width: min(100%, 17.5rem);
 }
 .header-text h2 {
   margin: 0;
@@ -446,6 +448,7 @@ onMounted(cargarPendientes);
   align-items: center;
   gap: 0.75rem;
   flex-shrink: 0;
+  flex-wrap: wrap;
 }
 .inline-icon {
   vertical-align: middle;
@@ -466,42 +469,7 @@ onMounted(cargarPendientes);
 .oficio-ref {
   margin-left: 0.8rem;
   font-size: 0.9rem;
-  color: #475569;
-}
-.data-table {
-  width: 100%;
-  border-collapse: collapse;
-  background: var(--surface);
-  border-radius: 6px;
-  overflow: hidden;
-}
-.data-table th, .data-table td {
-  padding: 0.8rem 1rem;
-  border-bottom: 1px solid var(--border);
-}
-.code-tag {
-  background: #e2e8f0;
-  padding: 0.2rem 0.5rem;
-  border-radius: 4px;
-  font-family: monospace;
-}
-.status-badge {
-  padding: 0.25rem 0.65rem;
-  border-radius: 20px;
-  font-size: 0.75rem;
-  font-weight: 700;
-}
-.status-badge.REMITIDA_A_CPD { background: #f3e8ff; color: #7e22ce; }
-.btn-action {
-  padding: 0.35rem 0.7rem;
-  border: 1px solid var(--border);
-  background: var(--surface);
-  border-radius: 4px;
-  font-weight: 600;
-  cursor: pointer;
-  display: flex;
-  align-items: center;
-  gap: 0.3rem;
+  color: var(--text-muted);
 }
 .btn-pay { background: var(--primary); color: var(--on-primary); border-color: var(--primary); }
 .btn-pay:hover { background: var(--primary-hover); border-color: var(--primary-hover); }

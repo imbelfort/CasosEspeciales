@@ -47,18 +47,18 @@
         </div>
 
         <!-- VISTA 2: TABLA DE HISTÓRICO ACADÉMICO -->
-        <div v-if="tab === 'lista'" class="table-responsive">
+        <div v-if="tab === 'lista'" class="table-responsive" tabindex="0" role="region" aria-label="Historial académico">
           <table class="data-table">
             <thead>
               <tr>
-                <th>Semestre</th>
-                <th>Sigla</th>
-                <th>Asignatura</th>
-                <th>Créditos</th>
-                <th>Estado Académico</th>
-                <th>Nota Final</th>
-                <th>Gestión</th>
-                <th>Acción</th>
+                <th scope="col">Semestre</th>
+                <th scope="col">Sigla</th>
+                <th scope="col">Asignatura</th>
+                <th scope="col">Créditos</th>
+                <th scope="col">Estado Académico</th>
+                <th scope="col">Nota Final</th>
+                <th scope="col">Gestión</th>
+                <th scope="col">Acción</th>
               </tr>
             </thead>
             <tbody>
@@ -68,7 +68,7 @@
                 <td>{{ h.materia_nombre || h.nombre }}</td>
                 <td>{{ h.creditos || 4 }} cr.</td>
                 <td>
-                  <span :class="['badge-historial', h.estado_materia]">
+                  <span :class="['status-badge', h.estado_materia]">
                     {{ getEstadoTexto(h.estado_materia) }}
                   </span>
                 </td>
@@ -197,7 +197,7 @@ const getEstadoTexto = (estado) => {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  border-bottom: 1px solid #e2e8f0;
+  border-bottom: 1px solid var(--border);
   padding-bottom: 1rem;
 }
 .modal-title-with-icon {
@@ -208,27 +208,27 @@ const getEstadoTexto = (estado) => {
 .modal-title-with-icon h3 {
   margin: 0;
   font-size: 1.25rem;
-  color: #1e293b;
+  color: var(--text);
 }
 .modal-subtitle {
   margin: 2px 0 0 0;
   font-size: 0.85rem;
-  color: #64748b;
+  color: var(--text-muted);
 }
 .modal-tabs {
   display: flex;
   gap: 0.5rem;
   padding: 0.75rem 0;
-  border-bottom: 1px solid #e2e8f0;
+  border-bottom: 1px solid var(--border);
 }
 .tab-btn {
   background: transparent;
-  border: 1px solid #cbd5e1;
-  border-radius: 6px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-pill);
   padding: 0.4rem 0.9rem;
   font-size: 0.85rem;
   font-weight: 600;
-  color: #475569;
+  color: var(--text);
   cursor: pointer;
   display: flex;
   align-items: center;
@@ -236,9 +236,9 @@ const getEstadoTexto = (estado) => {
   transition: all 0.2s;
 }
 .tab-btn.active {
-  background: #0064e0;
-  color: white;
-  border-color: #0064e0;
+  background: var(--primary);
+  color: var(--on-primary);
+  border-color: var(--primary);
 }
 .modal-body-scroll {
   overflow-y: auto;
@@ -249,47 +249,28 @@ const getEstadoTexto = (estado) => {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  border-top: 1px solid #e2e8f0;
+  border-top: 1px solid var(--border);
   padding-top: 1rem;
 }
 .footer-tip {
   font-size: 0.85rem;
-  color: #64748b;
+  color: var(--text-muted);
   display: flex;
   align-items: center;
   gap: 0.4rem;
 }
-.badge-historial {
-  display: inline-block;
-  padding: 3px 8px;
-  border-radius: 12px;
-  font-size: 0.75rem;
-  font-weight: bold;
-}
-.badge-historial.APROBADA {
-  background: #dcfce7;
-  color: #166534;
-}
-.badge-historial.REPROBADA {
-  background: #fee2e2;
-  color: #991b1b;
-}
-.badge-historial.INSCRITA {
-  background: #e0f2fe;
-  color: #075985;
-}
 .btn-add-sm {
-  background: #f0fdf4;
-  color: #16a34a;
-  border: 1px solid #bbf7d0;
+  background: var(--surface);
+  color: var(--text);
+  border: 1px solid var(--border);
   font-weight: 600;
   font-size: 0.75rem;
   padding: 3px 8px;
-  border-radius: 4px;
+  border-radius: var(--radius-pill);
   cursor: pointer;
 }
 .btn-add-sm:hover {
-  background: #16a34a;
-  color: white;
+  background: var(--surface-alt);
+  color: var(--text);
 }
 </style>

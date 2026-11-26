@@ -5,30 +5,32 @@ namespace App\Http\Controllers\Api;
 use App\Http\Controllers\Controller;
 use App\Models\ArchivoSolicitud;
 use App\Models\OficioCpd;
-use App\Models\PagoTransaccion;
 use App\Models\Periodo;
 use App\Models\Solicitud;
 use App\Services\AuditoriaNotificacionService;
+use App\Services\PagoFacilService;
+use App\Services\StripeCheckoutService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Str;
+use Stripe\Exception\ApiErrorException;
 
 class OficioCpdController extends Controller
 {
     /**
      * CU5: Procesamiento de Pagos (PagoService)
      * Solo admitido si la solicitud se encuentra en APROBADA_DIRECCION.
-     * Al registrarse el comprobante, la solicitud transiciona automáticamente a APROBADA.
+     * Dirección contrasta el comprobante antes de aprobar el pago.
      */
-    public function registrarPago(Request $request, $idSolicitud)
+    public function registrarPago(Request $request, $idSolicitud, StripeCheckoutService $stripe, PagoFacilService $qr)
     {
         $user = $request->user();
         $request->validate([
             'comprobante' => 'required|file|mimes:pdf,jpg,jpeg,png|max:10240',
         ]);
 
-        return DB::transaction(function () use ($user, $idSolicitud, $request) {
+        return DB::transaction(function () use ($user, $idSolicitud, $request, $stripe, $qr) {
             $solicitud = Solicitud::lockForUpdate()->findOrFail($idSolicitud);
 
             if ($solicitud->id_estudiante !== $user->id_usuario && !$user->tieneRol('DIRECTOR') && !$user->tieneRol('PERSONAL_ACADEMICO')) {
@@ -41,41 +43,91 @@ class OficioCpdController extends Controller
                 ], 422);
             }
 
-            if (PagoTransaccion::where('id_solicitud', $solicitud->id)->where('pasarela', 'STRIPE')->where('estado', 'PENDIENTE')->exists()) {
-                return response()->json(['error' => 'Hay un pago con tarjeta pendiente para esta solicitud.'], 409);
+            if ($solicitud->archivos()->where('tipo_archivo', 'BOLETA_PENDIENTE')->exists()) {
+                return response()->json(['error' => 'Ya enviaste una boleta para revisión.'], 409);
+            }
+
+            try {
+                $tarjeta = $stripe->cerrarPendiente($solicitud->id);
+            } catch (ApiErrorException $error) {
+                return $stripe->errorProveedor($error);
+            }
+            if ($tarjeta?->estado === 'PAGADO') {
+                return response()->json(['estado' => 'PAGADO']);
+            }
+            if ($tarjeta?->estado === 'PENDIENTE') {
+                return response()->json(['error' => 'Stripe todavía está procesando el pago.'], 409);
+            }
+
+            try {
+                $pagoQr = $qr->conciliarPendiente($solicitud->id);
+            } catch (\Exception $error) {
+                report($error);
+                return response()->json(['error' => 'No se pudieron verificar los intentos anteriores.'], 502);
+            }
+            if ($pagoQr?->estado === 'PAGADO') {
+                return response()->json(['estado' => 'PAGADO']);
+            }
+            if ($pagoQr?->estado === 'PENDIENTE') {
+                return response()->json(['error' => 'Hay un cobro pendiente. Espera su confirmación o vencimiento.'], 409);
             }
 
             $file = $request->file('comprobante');
             $uuid = Str::uuid()->toString();
-            $extension = $file->getClientOriginalExtension();
             $nombreOriginal = $file->getClientOriginalName();
             $nombreGuardado = "{$uuid}_{$nombreOriginal}";
             $ruta = $file->storeAs("archivos_solicitudes/{$solicitud->id}", $nombreGuardado, 'local');
+            abort_unless($ruta, 500, 'No se pudo guardar la boleta.');
 
             $archivo = ArchivoSolicitud::create([
                 'id_solicitud' => $solicitud->id,
                 'nombre_archivo' => $nombreOriginal,
-                'tipo_archivo' => 'COMPROBANTE_PAGO',
+                'tipo_archivo' => 'BOLETA_PENDIENTE',
                 'ruta_archivo' => $ruta,
                 'fecha_subida' => now(),
             ]);
 
-            // Transición automática a APROBADA (lista para remisión a CPD)
-            AuditoriaNotificacionService::registrarTransicion(
-                $solicitud,
-                'APROBADA',
-                'REGISTRO_PAGO',
-                $user->id_usuario,
-                'Comprobante de pago subido exitosamente. Solicitud lista para oficio a CPD.',
-                "Pago Verificado - Solicitud {$solicitud->codigo}",
-                "Su pago ha sido registrado. Su solicitud ahora está APROBADA y pasará al lote de remisión hacia CPD."
-            );
-
             return response()->json([
-                'mensaje' => 'Comprobante de pago adjuntado. Solicitud transicionada a APROBADA.',
+                'mensaje' => 'Boleta enviada para revisión por Dirección.',
                 'archivo' => $archivo,
                 'solicitud' => $solicitud
             ], 201);
+        });
+    }
+
+    public function descargarBoleta(Request $request, int $id, int $archivo)
+    {
+        $user = $request->user();
+        abort_unless($user->tieneRol('DIRECTOR') || $user->tieneRol('PERSONAL_ACADEMICO'), 403);
+        $boleta = Solicitud::findOrFail($id)->archivos()->where('tipo_archivo', 'BOLETA_PENDIENTE')->findOrFail($archivo);
+
+        abort_unless(Storage::disk('local')->exists($boleta->ruta_archivo), 404);
+        return Storage::disk('local')->download($boleta->ruta_archivo, $boleta->nombre_archivo);
+    }
+
+    public function observarBoleta(Request $request, int $id, int $archivo)
+    {
+        $user = $request->user();
+        abort_unless($user->tieneRol('DIRECTOR') || $user->tieneRol('PERSONAL_ACADEMICO'), 403);
+        $datos = $request->validate(['motivo' => 'required|string|max:500']);
+
+        return DB::transaction(function () use ($id, $archivo, $user, $datos) {
+            $solicitud = Solicitud::lockForUpdate()->findOrFail($id);
+            abort_unless($solicitud->estado === 'APROBADA_DIRECCION', 409, 'El arancel ya fue resuelto.');
+            $boleta = $solicitud->archivos()->where('tipo_archivo', 'BOLETA_PENDIENTE')->findOrFail($archivo);
+            $boleta->update(['tipo_archivo' => 'BOLETA_OBSERVADA']);
+
+            AuditoriaNotificacionService::registrarTransicion(
+                $solicitud,
+                $solicitud->estado,
+                'BOLETA_OBSERVADA',
+                $user->id_usuario,
+                $datos['motivo'],
+                "Boleta observada - {$solicitud->codigo}",
+                $datos['motivo']
+            );
+
+            return response()->noContent();
         });
     }
 

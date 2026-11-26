@@ -6,6 +6,7 @@ use App\Models\ArchivoSolicitud;
 use App\Models\PagoTransaccion;
 use App\Models\Solicitud;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Storage;
 
 class ConfirmacionPagoService
@@ -32,12 +33,20 @@ class ConfirmacionPagoService
             $pago->metodo_pago_nombre = $payload['MetodoPago'] ?? ($payload['paymentMethodName'] ?? 'QR PagoFácil');
             $pago->save();
 
+            if ($solicitud && PagoTransaccion::where('id_solicitud', $solicitud->id)->where('estado', 'PAGADO')
+                ->where('id', '<>', $pago->id)->exists()) {
+                Log::warning('Se recibió una confirmación adicional para un arancel ya pagado.', [
+                    'id_solicitud' => $solicitud->id,
+                    'ref' => $pago->numero_pago,
+                ]);
+            }
+
             // Si la transacción está ligada a un trámite de solicitud
             if ($solicitud && $solicitud->estado === 'APROBADA_DIRECCION') {
                 $nombreProveedor = $esStripe ? 'Stripe' : 'PagoFacil_QR';
                 $ruta = "pagos/{$pago->numero_pago}.json";
-                if ($esStripe && !Storage::disk('local')->put($ruta, json_encode($payload, JSON_THROW_ON_ERROR))) {
-                    throw new \RuntimeException('No se pudo guardar el comprobante de Stripe.');
+                if (!Storage::disk('local')->put($ruta, json_encode($payload, JSON_THROW_ON_ERROR))) {
+                    throw new \RuntimeException('No se pudo guardar el comprobante del pago.');
                 }
                 ArchivoSolicitud::create([
                     'id_solicitud' => $solicitud->id,

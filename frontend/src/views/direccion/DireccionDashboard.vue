@@ -38,17 +38,17 @@
         </button>
       </div>
 
-      <div class="table-responsive">
+      <div class="table-responsive" tabindex="0" role="region" aria-label="Registro de estudiantes">
         <table class="data-table">
           <thead>
             <tr>
-              <th>C.I.</th>
-              <th>Estudiante / Nombre</th>
-              <th>Registro Univ.</th>
-              <th>Carrera</th>
-              <th>Semestre</th>
-              <th>Correo Institucional</th>
-              <th>Estado</th>
+              <th scope="col">C.I.</th>
+              <th scope="col">Estudiante / Nombre</th>
+              <th scope="col">Registro Univ.</th>
+              <th scope="col">Carrera</th>
+              <th scope="col">Semestre</th>
+              <th scope="col">Correo Institucional</th>
+              <th scope="col">Estado</th>
             </tr>
           </thead>
           <tbody>
@@ -71,16 +71,16 @@
 
     <!-- SUBMODULO 1: SOLICITUDES Y EVALUACION CU3 -->
     <div v-if="submodulo === 'solicitudes'">
-      <div class="table-responsive">
+      <div class="table-responsive" tabindex="0" role="region" aria-label="Solicitudes para Dirección">
         <table class="data-table">
           <thead>
             <tr>
-              <th>Código</th>
-              <th>Estudiante / RU</th>
-              <th>Tipo de Caso</th>
-              <th>Estado</th>
-              <th>Fecha</th>
-              <th>Acciones</th>
+              <th scope="col">Código</th>
+              <th scope="col">Estudiante / RU</th>
+              <th scope="col">Tipo de Caso</th>
+              <th scope="col">Estado</th>
+              <th scope="col">Fecha</th>
+              <th scope="col">Acciones</th>
             </tr>
           </thead>
           <tbody>
@@ -93,16 +93,22 @@
               <td>{{ sol.tipo_caso }}</td>
               <td><span :class="['status-badge', sol.estado]">{{ sol.estado }}</span></td>
               <td>{{ formatearFecha(sol.fecha_solicitud) }}</td>
-              <td class="actions-cell">
-                <button @click="verDetalle(sol)" class="btn-action">
-                  <FileSearch :size="14" class="inline-icon" /> Expediente
-                </button>
-                <button v-if="sol.estado === 'ENVIADA' || sol.estado === 'OBSERVADA' || sol.estado === 'SUBSANADA'" @click="abrirEvaluar(sol)" class="btn-action btn-eval">
-                  <Scale :size="14" class="inline-icon" /> Evaluar (CU3)
-                </button>
-                <button v-if="sol.estado === 'APROBADA_DIRECCION'" @click="validarPagoManual(sol)" :disabled="validandoPago" class="btn-action btn-eval">
-                  Omitir y validar pago
-                </button>
+              <td>
+                <div class="actions-cell">
+                  <button @click="verDetalle(sol)" class="btn-action">
+                    <FileSearch :size="14" class="inline-icon" /> Expediente
+                  </button>
+                  <button v-if="sol.estado === 'ENVIADA' || sol.estado === 'OBSERVADA' || sol.estado === 'SUBSANADA'" @click="abrirEvaluar(sol)" class="btn-action btn-eval">
+                    <Scale :size="14" class="inline-icon" /> Evaluar (CU3)
+                  </button>
+                  <button v-if="sol.estado === 'APROBADA_DIRECCION'" @click="validarPagoManual(sol)" :disabled="validandoPago" class="btn-action btn-eval">
+                    Validar pago manualmente
+                  </button>
+                  <template v-if="sol.estado === 'APROBADA_DIRECCION' && boletaPendiente(sol)">
+                    <button type="button" @click="descargarBoleta(sol)" class="btn-action">Descargar boleta</button>
+                    <button type="button" @click="observarBoleta(sol)" :disabled="validandoPago" class="btn-action">Observar boleta</button>
+                  </template>
+                </div>
               </td>
             </tr>
           </tbody>
@@ -126,17 +132,17 @@
           </button>
         </div>
       </div>
-      <div class="table-responsive">
+      <div class="table-responsive" tabindex="0" role="region" aria-label="Cupos por grupo">
         <table class="data-table">
           <thead>
             <tr>
-              <th>Materia</th>
-              <th>Grupo</th>
-              <th>Horario y Días</th>
-              <th>Cupo Máximo</th>
-              <th>Cupos Libres</th>
-              <th>Estado</th>
-              <th>Acción Rápida</th>
+              <th scope="col">Materia</th>
+              <th scope="col">Grupo</th>
+              <th scope="col">Horario y Días</th>
+              <th scope="col">Cupo Máximo</th>
+              <th scope="col">Cupos Libres</th>
+              <th scope="col">Estado</th>
+              <th scope="col">Acción Rápida</th>
             </tr>
           </thead>
           <tbody>
@@ -156,7 +162,7 @@
                 <span :style="{ color: g.cupos_disponibles === 0 ? '#dc2626' : '#16a34a', fontWeight: 'bold' }">
                   {{ g.cupos_disponibles }}
                 </span>
-                <span v-if="g.cupos_disponibles === 0" style="font-size: 0.75rem; background: #fee2e2; color: #991b1b; padding: 2px 6px; border-radius: 4px; margin-left: 6px;">AGOTADO</span>
+                <span v-if="g.cupos_disponibles === 0" class="status-badge estado-error">AGOTADO</span>
               </td>
               <td><span class="status-badge ABIERTO">{{ g.estado }}</span></td>
               <td>
@@ -178,15 +184,15 @@
           <Plus :size="15" class="inline-icon" /> Generar Nuevo Oficio (CU5)
         </button>
       </div>
-      <div class="table-responsive">
+      <div class="table-responsive" tabindex="0" role="region" aria-label="Oficios remitidos">
         <table class="data-table">
           <thead>
             <tr>
-              <th>Número Oficio</th>
-              <th>Destinatario</th>
-              <th>Referencia</th>
-              <th>Fecha Remisión</th>
-              <th>Casos Asignados</th>
+              <th scope="col">Número Oficio</th>
+              <th scope="col">Destinatario</th>
+              <th scope="col">Referencia</th>
+              <th scope="col">Fecha Remisión</th>
+              <th scope="col">Casos Asignados</th>
             </tr>
           </thead>
           <tbody>
@@ -310,13 +316,13 @@
             <!-- Evaluación individual por materia solicitada -->
             <div v-if="solicitudActiva.grupos && solicitudActiva.grupos.length > 0" class="form-group">
               <label>Dictamen por Asignatura Solicitada:</label>
-              <div class="table-responsive">
+              <div class="table-responsive" tabindex="0" role="region" aria-label="Resolución por materia">
                 <table class="data-table">
                   <thead>
                     <tr>
-                      <th>Materia / Grupo</th>
-                      <th>Resolución</th>
-                      <th>Observación</th>
+                      <th scope="col">Materia / Grupo</th>
+                      <th scope="col">Resolución</th>
+                      <th scope="col">Observación</th>
                     </tr>
                   </thead>
                   <tbody>
@@ -572,7 +578,7 @@ const cargarDatos = async () => {
 };
 
 const validarPagoManual = async (solicitud) => {
-  if (!window.confirm(`¿Validar manualmente el arancel del trámite ${solicitud.codigo} y dejarlo listo para remitir a CPD?`)) return;
+  if (!window.confirm(`¿Confirmas que verificaste el pago del trámite ${solicitud.codigo}? Si tiene un intento de Stripe abierto, se cerrará antes de registrar el pago.`)) return;
 
   validandoPago.value = true;
   try {
@@ -580,6 +586,39 @@ const validarPagoManual = async (solicitud) => {
     await cargarDatos();
   } catch (e) {
     alert(e.response?.data?.error || e.response?.data?.message || 'Error al validar el pago.');
+  } finally {
+    validandoPago.value = false;
+  }
+};
+
+const boletaPendiente = (solicitud) => solicitud.archivos?.find(archivo => archivo.tipo_archivo === 'BOLETA_PENDIENTE');
+
+const descargarBoleta = async (solicitud) => {
+  const boleta = boletaPendiente(solicitud);
+  if (!boleta) return;
+  try {
+    const { data } = await api.get(`/solicitudes/${solicitud.id}/boletas/${boleta.id}`, { responseType: 'blob' });
+    const url = URL.createObjectURL(data);
+    const enlace = document.createElement('a');
+    enlace.href = url;
+    enlace.download = boleta.nombre_archivo;
+    enlace.click();
+    setTimeout(() => URL.revokeObjectURL(url), 1000);
+  } catch {
+    alert('No se pudo descargar la boleta.');
+  }
+};
+
+const observarBoleta = async (solicitud) => {
+  const boleta = boletaPendiente(solicitud);
+  const motivo = window.prompt('Indica el motivo por el que debe corregirse la boleta:')?.trim();
+  if (!boleta || !motivo) return;
+  validandoPago.value = true;
+  try {
+    await api.post(`/solicitudes/${solicitud.id}/boletas/${boleta.id}/observar`, { motivo });
+    await cargarDatos();
+  } catch (error) {
+    alert(error.response?.data?.message || 'No se pudo observar la boleta.');
   } finally {
     validandoPago.value = false;
   }
@@ -744,8 +783,8 @@ onMounted(cargarDatos);
 <style scoped>
 .role-view {
   background: var(--surface);
-  border-radius: 12px;
-  padding: 1.5rem;
+  border-radius: var(--radius-xl);
+  padding: clamp(1rem, 3vw, 1.5rem);
   border: 1px solid var(--border);
 }
 .view-header {
@@ -781,43 +820,11 @@ onMounted(cargarDatos);
   justify-content: space-between;
   align-items: center;
   margin-bottom: 1rem;
+  flex-wrap: wrap;
+  gap: .75rem;
 }
 .inline-icon {
   vertical-align: middle;
-}
-.data-table {
-  width: 100%;
-  border-collapse: collapse;
-}
-.data-table th, .data-table td {
-  padding: 0.85rem 1rem;
-  border-bottom: 1px solid var(--border);
-  text-align: left;
-}
-.status-badge {
-  padding: 0.25rem 0.65rem;
-  border-radius: 20px;
-  font-size: 0.75rem;
-  font-weight: 700;
-}
-.status-badge.ENVIADA { background: #fef3c7; color: #b45309; }
-.status-badge.APROBADA_DIRECCION { background: #dbeafe; color: #1d4ed8; }
-.status-badge.APROBADA { background: #dcfce7; color: #15803d; }
-.status-badge.RECHAZADA_DIRECCION { background: #fee2e2; color: #b91c1c; }
-.status-badge.REMITIDA_A_CPD { background: #f3e8ff; color: #7e22ce; }
-.status-badge.OBSERVADA { background: #ffedd5; color: #c2410c; }
-.status-badge.SUBSANADA { background: #e0e7ff; color: #3730a3; }
-.status-badge.ACTIVO { background: #dcfce7; color: #15803d; }
-.btn-action {
-  padding: 0.35rem 0.7rem;
-  border: 1px solid var(--border);
-  background: var(--surface);
-  border-radius: 4px;
-  font-weight: 600;
-  cursor: pointer;
-  display: flex;
-  align-items: center;
-  gap: 0.3rem;
 }
 .btn-eval { background: var(--primary-subtle); color: var(--text); border-color: var(--primary-text); }
 .modal-backdrop {

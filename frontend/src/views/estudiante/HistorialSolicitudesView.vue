@@ -2,24 +2,22 @@
   <div class="role-view">
     <div class="view-header">
       <div>
-        <h2>Historial y Trazabilidad de Mis Solicitudes (CU7)</h2>
-        <p class="view-desc">
-          Registro cronológico auditado de todas las solicitudes, cambios de estado y resoluciones efectuadas en el sistema.
-        </p>
+        <h2>Historial de solicitudes</h2>
       </div>
-      <button @click="cargarCasos" class="btn-secondary">
-        <RefreshCw :size="15" class="inline-icon" /> Actualizar Historial
+      <button type="button" @click="cargarCasos" class="btn-secondary" :disabled="cargando">
+        <RefreshCw :size="15" class="inline-icon" aria-hidden="true" /> Actualizar
       </button>
     </div>
 
-    <!-- TARJETAS DE HISTORIAL POR CASO -->
+    <p v-if="error" role="alert">{{ error }}</p>
+    <p v-if="cargando" role="status">Cargando historial…</p>
     <div class="historial-container">
-      <div v-for="sol in solicitudes" :key="sol.id" class="historial-card">
+      <article v-for="sol in solicitudes" :key="sol.id" class="historial-card">
         <div class="historial-card-header">
           <div class="card-title-group">
-            <span class="code-tag">{{ sol.codigo }}</span>
+            <h3 class="code-tag">{{ sol.codigo }}</h3>
             <span class="tipo-tag">{{ sol.tipo_caso }}</span>
-            <span class="periodo-tag">Gestión: {{ sol.periodo?.gestion }}</span>
+            <span v-if="sol.periodo?.gestion" class="periodo-tag">Gestión {{ sol.periodo.gestion }}</span>
           </div>
           <span :class="['status-badge', sol.estado]">{{ sol.estado }}</span>
         </div>
@@ -29,37 +27,34 @@
           <div v-if="sol.evaluacion" class="eval-note">
             <strong>Resolución de Dirección:</strong> {{ sol.evaluacion.decision }}
             <span v-if="sol.evaluacion.justificacion"> - {{ sol.evaluacion.justificacion }}</span>
-            <span v-if="sol.motivo_rechazo" class="text-danger"> (Rechazo: {{ sol.motivo_rechazo }})</span>
+            <p v-if="sol.motivo_rechazo"><strong>Motivo del rechazo:</strong> {{ sol.motivo_rechazo }}</p>
           </div>
         </div>
 
-        <!-- LÍNEA DE TIEMPO DEL CASO -->
-        <h4 class="timeline-title">Eventos y Auditoría Registrados (CU7):</h4>
-        <div class="timeline">
-          <div v-for="h in sol.historial" :key="h.id" class="timeline-item">
-            <span class="timeline-dot"></span>
+        <h4 class="timeline-title">Actividad</h4>
+        <ol v-if="sol.historial?.length" class="timeline">
+          <li v-for="h in sol.historial" :key="h.id" class="timeline-item">
+            <span class="timeline-dot" aria-hidden="true"></span>
             <div class="timeline-content">
               <div class="timeline-header">
                 <strong>{{ h.accion }}</strong>
-                <span class="timeline-date">{{ formatearFecha(h.fecha_evento) }}</span>
+                <time class="timeline-date" :datetime="h.fecha_evento">{{ formatearFecha(h.fecha_evento) }}</time>
               </div>
               <div class="timeline-transicion">
-                Transición: <span class="badge-sm">{{ h.estado_anterior || 'INICIO' }}</span> 
-                <ArrowRight :size="12" class="inline-icon" /> 
-                <span class="badge-sm">{{ h.estado_nuevo }}</span>
+                <span :class="['status-badge', h.estado_anterior]">{{ h.estado_anterior || 'Inicio' }}</span>
+                <ArrowRight :size="14" role="img" aria-label="Cambió a" />
+                <span :class="['status-badge', h.estado_nuevo]">{{ h.estado_nuevo }}</span>
               </div>
-              <p class="timeline-obs">{{ h.observacion }}</p>
+              <p v-if="h.observacion" class="timeline-obs">{{ h.observacion }}</p>
             </div>
-          </div>
-          <div v-if="!sol.historial || sol.historial.length === 0" class="text-muted">
-            Sin eventos registrados en auditoría.
-          </div>
-        </div>
-      </div>
+          </li>
+        </ol>
+        <p v-else class="timeline-date">Sin actividad registrada.</p>
+      </article>
 
-      <div v-if="solicitudes.length === 0" class="no-records">
-        <History :size="32" class="text-muted mb-2" />
-        <p>No tienes antecedentes de solicitudes registradas.</p>
+      <div v-if="!cargando && !error && solicitudes.length === 0" class="no-records">
+        <History :size="28" aria-hidden="true" />
+        <p>Aún no tienes solicitudes registradas.</p>
       </div>
     </div>
   </div>
@@ -71,15 +66,21 @@ import { RefreshCw, ArrowRight, History } from '@lucide/vue';
 import api from '../../services/api';
 
 const solicitudes = ref([]);
+const cargando = ref(true);
+const error = ref('');
 
 const formatearFecha = (f) => f ? new Date(f).toLocaleString('es-BO') : 'N/A';
 
 const cargarCasos = async () => {
+  cargando.value = true;
+  error.value = '';
   try {
     const res = await api.get('/solicitudes/mis-casos');
     solicitudes.value = res.data;
-  } catch (e) {
-    console.error(e);
+  } catch {
+    error.value = 'No se pudo cargar el historial. Intenta actualizarlo.';
+  } finally {
+    cargando.value = false;
   }
 };
 
@@ -87,149 +88,119 @@ onMounted(cargarCasos);
 </script>
 
 <style scoped>
-.role-view {
-  background: var(--surface);
-  border-radius: 12px;
-  padding: 1.5rem;
-  border: 1px solid var(--border);
-}
-.view-header {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  margin-bottom: 1.5rem;
-}
-.view-desc {
-  color: var(--text-muted);
-  font-size: 0.9rem;
-  margin: 0.2rem 0 0 0;
-}
-.inline-icon {
-  vertical-align: middle;
-}
+.role-view,
 .historial-container {
-  display: flex;
-  flex-direction: column;
-  gap: 1.5rem;
+  display: grid;
+  gap: 1rem;
 }
-.historial-card {
-  border: 1px solid var(--border);
-  border-radius: 8px;
-  padding: 1.2rem;
-  background: var(--surface-alt);
-}
-.historial-card-header {
+
+.view-header,
+.historial-card-header,
+.timeline-header,
+.card-title-group,
+.timeline-transicion {
   display: flex;
-  justify-content: space-between;
-  align-items: center;
-  margin-bottom: 0.8rem;
   flex-wrap: wrap;
-  gap: 0.5rem;
-}
-.card-title-group {
-  display: flex;
   align-items: center;
-  gap: 0.5rem;
+  gap: .5rem .75rem;
 }
-.code-tag {
-  background: #1e3a8a;
-  color: white;
-  padding: 0.25rem 0.6rem;
-  border-radius: 4px;
-  font-family: monospace;
-  font-weight: bold;
+
+.view-header,
+.historial-card-header,
+.timeline-header {
+  justify-content: space-between;
 }
-.tipo-tag {
-  font-weight: 600;
-  color: var(--text);
+
+.view-header h2,
+.card-title-group h3,
+.timeline-title {
+  margin: 0;
 }
-.periodo-tag {
-  font-size: 0.85rem;
+
+.view-header h2 {
+  font-size: calc(1.5rem * var(--font-scale, 1));
+}
+
+.historial-card,
+.no-records {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-xl);
+  padding: clamp(1rem, 3vw, 1.5rem);
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+
+.historial-card-header {
+  padding-bottom: .75rem;
+  border-bottom: 1px solid var(--border);
+}
+
+.card-title-group h3 {
+  font-size: calc(1rem * var(--font-scale, 1));
+}
+
+.periodo-tag,
+.timeline-date,
+.no-records {
   color: var(--text-muted);
 }
-.status-badge {
-  padding: 0.25rem 0.65rem;
-  border-radius: 20px;
-  font-size: 0.75rem;
-  font-weight: 700;
+
+.historial-meta,
+.timeline-content,
+.timeline-date {
+  font-size: calc(.875rem * var(--font-scale, 1));
 }
-.status-badge.ENVIADA { background: #fef3c7; color: #b45309; }
-.status-badge.APROBADA_DIRECCION { background: #dbeafe; color: #1d4ed8; }
-.status-badge.APROBADA { background: #dcfce7; color: #15803d; }
-.status-badge.RECHAZADA_DIRECCION { background: #fee2e2; color: #b91c1c; }
-.status-badge.REMITIDA_A_CPD { background: #f3e8ff; color: #7e22ce; }
-.status-badge.HABILITADA { background: #bbf7d0; color: #166534; }
-.status-badge.OBSERVADA { background: #ffedd5; color: #c2410c; }
-.historial-meta {
-  font-size: 0.9rem;
-  color: #475569;
-  border-bottom: 1px solid var(--border);
-  padding-bottom: 0.8rem;
-  margin-bottom: 1rem;
-}
+
 .eval-note {
-  background: var(--primary-subtle);
-  padding: 0.5rem 0.8rem;
-  border-radius: 4px;
-  margin-top: 0.5rem;
+  padding: .75rem 1rem;
+  border-radius: var(--radius-lg);
+  background: var(--surface-alt);
   color: var(--text);
 }
+
+.eval-note p {
+  margin: .375rem 0 0;
+}
+
 .timeline-title {
-  margin: 0 0 0.8rem 0;
-  font-size: 0.9rem;
-  color: var(--text);
+  margin-block: 1rem .75rem;
 }
+
 .timeline {
-  border-left: 2px solid var(--border);
-  padding-left: 1.2rem;
+  list-style: none;
+  margin: 0 0 0 .3125rem;
+  padding: 0 0 0 1rem;
+  border-inline-start: 1px solid var(--border);
 }
+
 .timeline-item {
   position: relative;
-  margin-bottom: 1rem;
+  padding-block: .625rem;
 }
+
+.timeline-item + .timeline-item {
+  border-top: 1px solid var(--border);
+}
+
 .timeline-dot {
   position: absolute;
-  left: -1.55rem;
-  top: 0.2rem;
-  width: 10px;
-  height: 10px;
-  background: #1e3a8a;
+  inset-inline-start: -1.3125rem;
+  top: 1rem;
+  width: .5625rem;
+  height: .5625rem;
+  border: 1px solid var(--surface);
+  outline: 1px solid var(--text);
+  background: var(--primary-text);
   border-radius: 50%;
 }
-.timeline-header {
-  display: flex;
-  justify-content: space-between;
-  font-size: 0.9rem;
-}
-.timeline-date {
-  font-size: 0.8rem;
-  color: #94a3b8;
-}
-.timeline-transicion {
-  font-size: 0.8rem;
-  color: var(--text-muted);
-  margin: 0.2rem 0;
-}
-.badge-sm {
-  background: #e2e8f0;
-  padding: 0.1rem 0.4rem;
-  border-radius: 4px;
-  font-family: monospace;
-}
+
+.timeline-transicion,
 .timeline-obs {
-  margin: 0.3rem 0 0 0;
-  font-size: 0.85rem;
-  color: var(--text);
+  margin: .375rem 0 0;
 }
+
 .no-records {
   text-align: center;
-  padding: 3rem 1rem;
-  color: #94a3b8;
-  display: flex;
-  flex-direction: column;
-  align-items: center;
 }
-.text-danger { color: #dc2626; }
-.text-muted { color: #94a3b8; }
-.mb-2 { margin-bottom: 0.5rem; }
 </style>

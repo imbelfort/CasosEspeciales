@@ -61,6 +61,8 @@ Route::middleware([RegistrarBitacoraCpd::class, 'auth:sanctum'])->group(function
 
     // CU5: Procesamiento de Pagos Tradicional / Oficios CPD
     Route::post('/solicitudes/{id}/pago', [OficioCpdController::class, 'registrarPago']);
+    Route::get('/solicitudes/{id}/boletas/{archivo}', [OficioCpdController::class, 'descargarBoleta']);
+    Route::post('/solicitudes/{id}/boletas/{archivo}/observar', [OficioCpdController::class, 'observarBoleta']);
     Route::post('/oficios-cpd/generar', [OficioCpdController::class, 'generarOficioRemision']);
     Route::get('/oficios-cpd', [OficioCpdController::class, 'listarOficios']);
 

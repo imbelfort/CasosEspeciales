@@ -17,9 +17,9 @@
       <div class="modal-body-pago">
         <!-- Banner Informativo -->
         <div class="pago-banner">
-          <div class="banner-amount">
+          <div v-if="pagoActual?.monto != null || solicitud?.periodo?.costo_arancel_caso != null" class="banner-amount">
             <span class="currency">BOB</span>
-            <span class="amount">{{ pagoActual?.monto || '15.00' }}</span>
+            <span class="amount">{{ pagoActual?.monto ?? solicitud?.periodo?.costo_arancel_caso }}</span>
           </div>
           <div class="banner-desc">
             <strong>Arancel Académico - FICCT UAGRM</strong>
@@ -90,7 +90,7 @@
         <div v-else-if="pagoActual && pagoActual.estado === 'PAGADO'" class="success-state">
           <CheckCircle2 :size="50" class="text-success" />
           <h4>¡Pago Confirmado Exitosamente!</h4>
-          <p>El arancel ha sido procesado mediante PagoFácil QR. Tu solicitud ha pasado automáticamente a estado <strong>APROBADA</strong> para ser remitida a CPD.</p>
+          <p>Tu arancel está pagado. Puedes consultar el estado actualizado de tu caso en la lista de solicitudes.</p>
           <div class="receipt-box">
             <div><strong>Referencia:</strong> {{ pagoActual.numero_pago }}</div>
             <div><strong>Monto:</strong> {{ pagoActual.monto }} BOB</div>
@@ -103,7 +103,8 @@
         <div v-else-if="errorMensaje" class="error-state">
           <AlertCircle :size="40" class="text-danger" />
           <p class="text-danger font-bold">{{ errorMensaje }}</p>
-          <button @click="generarCobro" class="btn-secondary mt-2">Reintentar Generar QR</button>
+          <button v-if="stripePendiente" @click="generarCobro(true)" class="btn-secondary mt-2">Cerrar Stripe y generar QR</button>
+          <button v-else @click="generarCobro()" class="btn-secondary mt-2">Reintentar generar QR</button>
         </div>
       </div>
 
@@ -138,6 +139,7 @@ const cargando = ref(false);
 const verificando = ref(false);
 const procesando = ref(false);
 const errorMensaje = ref('');
+const stripePendiente = ref(false);
 const pagoActual = ref(null);
 const modoSandbox = ref(false);
 let intervaloPolling = null;
@@ -160,29 +162,34 @@ const formatearFecha = (f) => {
   });
 };
 
-const generarCobro = async () => {
+const generarCobro = async (cerrarStripe = false) => {
   if (!props.solicitud) return;
   cargando.value = true;
   errorMensaje.value = '';
+  stripePendiente.value = false;
+  pagoActual.value = null;
   
   try {
-    const res = await api.post(`/solicitudes/${props.solicitud.id}/pagar-qr`);
+    const res = await api.post(`/solicitudes/${props.solicitud.id}/pagar-qr`, { cerrar_stripe: cerrarStripe });
     pagoActual.value = res.data.pago;
     modoSandbox.value = !!res.data.modo_sandbox;
 
     // Si no está pagado aún, iniciar sondeo automático cada 7 segundos
-    if (pagoActual.value && pagoActual.value.estado !== 'PAGADO') {
+    if (pagoActual.value?.estado === 'PAGADO') {
+      emit('pago-completado', pagoActual.value);
+    } else if (pagoActual.value?.estado === 'PENDIENTE') {
       iniciarPolling();
     }
   } catch (e) {
-    errorMensaje.value = e.response?.data?.error || 'Error al conectar con PagoFácil QR.';
+    stripePendiente.value = e.response?.data?.codigo === 'STRIPE_PENDIENTE';
+    errorMensaje.value = e.response?.data?.error || e.response?.data?.message || 'Error al conectar con PagoFácil QR.';
   } finally {
     cargando.value = false;
   }
 };
 
 const verificarEstado = async () => {
-  if (!pagoActual.value?.id) return;
+  if (!pagoActual.value?.id || verificando.value) return;
   verificando.value = true;
   try {
     const res = await api.get(`/pagos/${pagoActual.value.id}/consultar`);
@@ -190,6 +197,10 @@ const verificarEstado = async () => {
     if (res.data.estado === 'PAGADO') {
       detenerPolling();
       emit('pago-completado', pagoActual.value);
+    } else if (res.data.estado === 'EXPIRADO') {
+      detenerPolling();
+      pagoActual.value = null;
+      errorMensaje.value = 'El QR venció. Puedes generar otro o cerrar esta ventana para elegir Stripe.';
     }
   } catch (e) {
     console.error('Error al verificar estado de pago:', e);

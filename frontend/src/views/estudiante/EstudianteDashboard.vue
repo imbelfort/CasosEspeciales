@@ -41,16 +41,16 @@
     <p v-if="estadoStripe" class="banner-aviso-warn" role="status">{{ estadoStripe }}</p>
 
     <!-- BANDEJA DE MIS CASOS -->
-    <div class="table-responsive">
+    <div class="table-responsive" tabindex="0" role="region" aria-label="Solicitudes de casos especiales">
       <table class="data-table">
         <thead>
           <tr>
-            <th>Código de Solicitud</th>
-            <th>Período</th>
-            <th>Tipo de Caso</th>
-            <th>Estado</th>
-            <th>Fecha Envío</th>
-            <th>Acciones</th>
+            <th scope="col">Código de Solicitud</th>
+            <th scope="col">Período</th>
+            <th scope="col">Tipo de Caso</th>
+            <th scope="col">Estado</th>
+            <th scope="col">Fecha Envío</th>
+            <th scope="col">Acciones</th>
           </tr>
         </thead>
         <tbody>
@@ -60,35 +60,41 @@
             <td>{{ sol.tipo_caso }}</td>
             <td><span :class="['status-badge', sol.estado]">{{ sol.estado }}</span></td>
             <td>{{ formatearFecha(sol.fecha_solicitud) }}</td>
-            <td class="actions-cell">
-              <button @click="verDetalle(sol)" class="btn-action" title="Ver expediente completo">
-                <FileSearch :size="14" class="inline-icon" /> Expediente
-              </button>
-
-              <button type="button" class="btn-action btn-pdf" :disabled="descargasCarta.has(sol.id)"
-                title="Descargar la carta de solicitud para firmarla" @click="descargarCarta(sol)">
-                <Download :size="14" class="inline-icon" aria-hidden="true" />
-                {{ descargasCarta.has(sol.id) ? 'Descargando…' : 'Descargar carta PDF' }}
-              </button>
-
-              <!-- Subsanar respaldo SOLO si la solicitud está OBSERVADA por Dirección -->
-              <button v-if="sol.estado === 'OBSERVADA'" @click="abrirAdjuntarRespaldo(sol)" class="btn-action btn-file" title="Subir nuevo respaldo solicitado en la observación">
-                <Paperclip :size="14" class="inline-icon" /> Subsanar Respaldo
-              </button>
-
-              <!-- Módulo de Cobros: Pagar por QR PagoFácil o Adjuntar Comprobante (CU5) -->
-              <div v-if="sol.estado === 'APROBADA_DIRECCION'" class="pay-actions-group">
-                <button @click="abrirPagoQr(sol)" class="btn-action btn-pay-qr" title="Pagar arancel inmediatamente con QR bancario">
-                  <QrCode :size="14" class="inline-icon" /> Pagar con QR
+            <td>
+              <div class="actions-cell">
+                <button @click="verDetalle(sol)" class="btn-action" title="Ver expediente completo">
+                  <FileSearch :size="14" class="inline-icon" /> Expediente
                 </button>
-                <button v-if="stripeDisponible" type="button" class="btn-action btn-pay"
-                  :disabled="stripeAbriendo" @click="pagarConTarjeta(sol)">
-                  <CreditCard :size="14" class="inline-icon" aria-hidden="true" />
-                  {{ stripeAbriendo === sol.id ? 'Abriendo Stripe…' : 'Pagar con tarjeta' }}
+
+                <button type="button" class="btn-action btn-pdf" :disabled="descargasCarta.has(sol.id)"
+                  title="Descargar la carta de solicitud para firmarla" @click="descargarCarta(sol)">
+                  <Download :size="14" class="inline-icon" aria-hidden="true" />
+                  {{ descargasCarta.has(sol.id) ? 'Descargando…' : 'Descargar carta PDF' }}
                 </button>
-                <button @click="abrirPago(sol)" class="btn-action btn-pay" title="Subir boleta física de depósito">
-                  <UploadCloud :size="14" class="inline-icon" /> Subir Boleta
+
+                <!-- Subsanar respaldo SOLO si la solicitud está OBSERVADA por Dirección -->
+                <button v-if="sol.estado === 'OBSERVADA'" @click="abrirAdjuntarRespaldo(sol)" class="btn-action btn-file" title="Subir nuevo respaldo solicitado en la observación">
+                  <Paperclip :size="14" class="inline-icon" /> Subsanar Respaldo
                 </button>
+
+                <template v-if="sol.estado === 'APROBADA_DIRECCION'">
+                  <span v-if="sol.archivos?.some(a => a.tipo_archivo === 'BOLETA_PENDIENTE')">
+                    Boleta en revisión por Dirección
+                  </span>
+                  <div v-else class="pay-actions-group" role="group" aria-label="Método de pago del arancel">
+                    <button type="button" :disabled="stripeAbriendo !== null" @click="abrirPagoQr(sol)" class="btn-action btn-pay-qr">
+                      <QrCode :size="16" aria-hidden="true" /> Pagar con QR
+                    </button>
+                    <button v-if="stripeDisponible" type="button" class="btn-action btn-stripe"
+                      :disabled="stripeAbriendo !== null" @click="pagarConTarjeta(sol)">
+                      <img :src="logoStripe" alt="Stripe" />
+                      {{ stripeAbriendo === sol.id ? 'Abriendo…' : 'Tarjeta' }}
+                    </button>
+                    <button type="button" :disabled="stripeAbriendo !== null" @click="abrirPago(sol)" class="btn-action btn-pay">
+                      <UploadCloud :size="14" class="inline-icon" /> Enviar boleta
+                    </button>
+                  </div>
+                </template>
               </div>
             </td>
           </tr>
@@ -128,14 +134,14 @@
             </div>
 
             <!-- Listado de materias añadidas a la solicitud -->
-            <div class="table-responsive mb-2">
+            <div class="table-responsive mb-2" tabindex="0" role="region" aria-label="Materias solicitadas">
               <table class="data-table">
                 <thead>
                   <tr>
-                    <th>Materia</th>
-                    <th>Grupo Solicitado</th>
-                    <th>Motivo de la Materia</th>
-                    <th>Quitar</th>
+                    <th scope="col">Materia</th>
+                    <th scope="col">Grupo Solicitado</th>
+                    <th scope="col">Motivo de la Materia</th>
+                    <th scope="col">Quitar</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -259,7 +265,7 @@
         </div>
         <form @submit.prevent="subirComprobante" class="modal-form">
           <div class="alert-box-info">
-            Tu caso ha sido <strong>APROBADO POR DIRECCIÓN</strong>. Sube tu boleta de pago bancaria para que tu solicitud pase al estado <strong>APROBADA</strong> y sea incluida en el oficio remitido a CPD.
+            Si ya pagaste por depósito, envía la boleta bancaria para que Dirección valide el pago.
           </div>
           <div class="form-group mt-3">
             <label>Comprobante de Pago (PDF, JPG, PNG) (*):</label>
@@ -377,7 +383,6 @@ import {
   FileSearch, 
   BookPlus, 
   Paperclip, 
-  CreditCard, 
   QrCode,
   UploadCloud,
   X, 
@@ -394,6 +399,7 @@ import {
   GraduationCap
 } from '@lucide/vue';
 import PagoQrModal from '../../components/pago/PagoQrModal.vue';
+import logoStripe from '../../assets/stripe.svg';
 import ModalAvanceAcademico from '../../components/estudiante/ModalAvanceAcademico.vue';
 import EtapasCronograma from '../../components/common/EtapasCronograma.vue';
 import api from '../../services/api';
@@ -482,7 +488,7 @@ const limiteCarreraAlcanzado = computed(() => {
 
 const materiasDisponiblesParaAgregar = computed(() => {
   const idsGruposElegidos = materiasSeleccionadasForm.value.map(m => m.id_grupo);
-  
+
   // Obtener IDs de materias ya aprobadas o cursadas satisfactoriamente
   const idsMateriasAprobadas = historicoAcademico.value
     .filter(h => h.estado_materia === 'APROBADA' || (h.nota_final && h.nota_final >= 51))
@@ -515,7 +521,7 @@ const getSiglaGrupo = (idGrupo) => {
 const getDetalleGrupoHorario = (grupo) => {
   if (!grupo) return '';
   const cuposTxt = grupo.cupos_disponibles === 0 ? '¡0 cupos - LLENO!' : `${grupo.cupos_disponibles} cupos libres`;
-  
+
   if (!grupo.horarios || grupo.horarios.length === 0) {
     return `Grupo ${grupo.sigla_grupo} (${cuposTxt})`;
   }
@@ -772,6 +778,11 @@ async function pagarConTarjeta(sol) {
   estadoStripe.value = '';
   try {
     const { data } = await api.post(`/solicitudes/${sol.id}/pagar-stripe`, {}, { signal: consultasStripe.signal });
+    if (data.estado === 'PAGADO') {
+      estadoStripe.value = 'Pago del arancel confirmado.';
+      await cargarDatos();
+      return;
+    }
     window.location.assign(data.url);
   } catch (error) {
     if (!consultasStripe.signal.aborted) {
@@ -794,8 +805,8 @@ async function procesarRetornoStripe() {
       ? await api.delete(rutaPago, opciones)
       : await api.get(rutaPago, opciones);
 
-    for (let intento = 0; intento < 10 && data.estado === 'PENDIENTE' && !consultasStripe.signal.aborted; intento++) {
-      await new Promise(resolve => setTimeout(resolve, 1500));
+    for (let intento = 0; intento < 5 && data.estado === 'PENDIENTE' && !consultasStripe.signal.aborted; intento++) {
+      await new Promise(resolve => setTimeout(resolve, 2500));
       ({ data } = await api.get(rutaPago, opciones));
     }
 
@@ -838,14 +849,14 @@ const subirComprobante = async () => {
   try {
     const fd = new FormData();
     fd.append('comprobante', archivoComprobante.value);
-    await api.post(`/solicitudes/${solicitudActiva.value.id}/pago`, fd, {
+    const { data } = await api.post(`/solicitudes/${solicitudActiva.value.id}/pago`, fd, {
       headers: { 'Content-Type': 'multipart/form-data' }
     });
     modalPago.value = false;
-    alert('Comprobante verificado. Estado actualizado a APROBADA.');
+    alert(data.estado === 'PAGADO' ? 'El arancel ya fue confirmado.' : data.mensaje);
     cargarDatos();
   } catch (e) {
-    alert(e.response?.data?.error || 'Error al adjuntar comprobante.');
+    alert(e.response?.data?.error || e.response?.data?.message || 'Error al adjuntar comprobante.');
   } finally {
     loading.value = false;
   }
@@ -890,6 +901,15 @@ onUnmounted(() => consultasStripe.abort());
 </script>
 
 <style scoped>
+.btn-stripe img {
+  width: 46px;
+  height: auto;
+  display: block;
+  background: #fff;
+  padding: 2px 4px;
+  border-radius: var(--radius-sm);
+}
+
 .schedule-banner {
   background-color: var(--surface);
   border: 1px solid var(--border);
@@ -941,8 +961,8 @@ onUnmounted(() => consultasStripe.abort());
 
 .role-view {
   background: var(--surface);
-  border-radius: 12px;
-  padding: 1.5rem;
+  border-radius: var(--radius-xl);
+  padding: clamp(1rem, 3vw, 1.5rem);
   border: 1px solid var(--border);
 }
 .view-header {
@@ -955,7 +975,7 @@ onUnmounted(() => consultasStripe.abort());
 }
 .header-text {
   flex: 1;
-  min-width: 280px;
+  min-width: min(100%, 17.5rem);
 }
 .header-action-buttons {
   display: flex;
@@ -963,6 +983,7 @@ onUnmounted(() => consultasStripe.abort());
   align-items: center;
   gap: 0.75rem;
   flex-shrink: 0;
+  flex-wrap: wrap;
 }
 .view-desc {
   color: var(--text-muted);
@@ -989,64 +1010,8 @@ onUnmounted(() => consultasStripe.abort());
   flex-shrink: 0;
   vertical-align: middle;
 }
-.table-responsive {
-  overflow-x: auto;
-}
-.data-table {
-  width: 100%;
-  border-collapse: collapse;
-}
-.data-table th, .data-table td {
-  padding: 0.85rem 1rem;
-  border-bottom: 1px solid var(--border);
-  text-align: left;
-  font-size: 0.9rem;
-}
-.data-table th {
-  background: var(--surface-alt);
-  color: #475569;
-  font-weight: 600;
-}
-.code-tag {
-  background: var(--surface-alt);
-  padding: 0.2rem 0.5rem;
-  border-radius: 4px;
-  font-family: monospace;
-}
-.status-badge {
-  padding: 0.25rem 0.65rem;
-  border-radius: 20px;
-  font-size: 0.75rem;
-  font-weight: 700;
-}
-.status-badge.ENVIADA { background: #fef3c7; color: #b45309; }
-.status-badge.APROBADA_DIRECCION { background: #dbeafe; color: #1d4ed8; }
-.status-badge.APROBADA { background: #dcfce7; color: #15803d; }
-.status-badge.RECHAZADA_DIRECCION { background: #fee2e2; color: #b91c1c; }
-.status-badge.REMITIDA_A_CPD { background: #f3e8ff; color: #7e22ce; }
-.status-badge.HABILITADA { background: #bbf7d0; color: #166534; }
-.status-badge.OBSERVADA { background: #ffedd5; color: #c2410c; }
-.status-badge.SUBSANADA { background: #e0e7ff; color: #3730a3; }
-.actions-cell {
-  display: flex;
-  gap: 0.4rem;
-}
-.btn-action {
-  padding: 0.35rem 0.7rem;
-  border: 1px solid var(--border);
-  background: var(--surface);
-  border-radius: 4px;
-  font-size: 0.8rem;
-  font-weight: 600;
-  cursor: pointer;
-  display: flex;
-  align-items: center;
-  gap: 0.3rem;
-}
-.btn-add { background: var(--primary-subtle); color: var(--text); border-color: #bfdbfe; }
-.btn-pdf { background: #fef2f2; color: #dc2626; border-color: #fecaca; text-decoration: none; }
+.btn-add { background: var(--primary-subtle); color: var(--text); }
 .btn-file { background: var(--surface-alt); color: var(--text); }
-.btn-pay { background: #ecfdf5; color: #065f46; border-color: #a7f3d0; }
 .pay-actions-group {
   display: flex;
   gap: 0.35rem;
@@ -1063,7 +1028,7 @@ onUnmounted(() => consultasStripe.abort());
 .no-records {
   text-align: center;
   padding: 2rem;
-  color: #94a3b8;
+  color: var(--text-muted);
 }
 .modal-backdrop {
   position: fixed;
@@ -1131,7 +1096,7 @@ onUnmounted(() => consultasStripe.abort());
 .clean-list li { padding: 0.4rem 0; border-bottom: 1px solid var(--border); display: flex; align-items: center; gap: 0.4rem; }
 .timeline { border-left: 2px solid var(--border); padding-left: 1rem; margin-top: 1rem; }
 .timeline-item { position: relative; margin-bottom: 1rem; }
-.timeline-dot { position: absolute; left: -1.35rem; top: 0.2rem; width: 10px; height: 10px; background: #1e3a8a; border-radius: 50%; }
+.timeline-dot { position: absolute; left: -1.35rem; top: 0.2rem; width: 10px; height: 10px; background: var(--primary-text); border-radius: 50%; }
 .banner-aviso-info {
   background: var(--primary-subtle);
   border: 1px solid var(--primary-text);
