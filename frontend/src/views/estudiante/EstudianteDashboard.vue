@@ -328,6 +328,19 @@
 
     <ExpedienteSolicitudDialog ref="expediente" estudiante />
 
+    <!-- MODAL MALLA CURRICULAR E HISTORIAL ACADÉMICO -->
+    <ModalAvanceAcademico
+      :visible="modalAvance"
+      :materias="materias"
+      :historico-lista="historicoAcademico"
+      :historico-map="historicoMap"
+      :materias-solicitadas-ids="materiasSolicitadasActivas"
+      :materia-seleccionada="materiaSeleccionadaMalla"
+      :semestre-actual="props.usuario?.estudiante?.semestre_actual || 5"
+      @close="modalAvance = false"
+      @select-materia="seleccionarMateriaDesdeMalla"
+    />
+
   </div>
 </template>
 

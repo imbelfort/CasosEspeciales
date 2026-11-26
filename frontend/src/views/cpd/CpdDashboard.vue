@@ -115,17 +115,17 @@
           </button>
         </div>
         
-        <div class="modal-body-scroll">
-          <form @submit.prevent="guardarConfigPeriodo" class="modal-form">
+        <form @submit.prevent="guardarConfigPeriodo" class="modal-form">
+          <div class="modal-body-scroll">
             <div class="alert-box-info mb-3">
               Configura las fechas del cronograma{{ esCpd ? ' y el monto del arancel' : '' }}. El plazo de pago va del inicio de evaluación al fin de inscripción en CPD.
             </div>
             
             <div class="row">
-              <label v-if="esCpd" class="form-group col">
-                Arancel por caso especial (Bs.)
+              <div v-if="esCpd" class="form-group col">
+                <label>Arancel por caso especial (Bs.):</label>
                 <input v-model.number="formConfig.costo_arancel_caso" type="number" min="0" step="0.01" required />
-              </label>
+              </div>
               <div class="form-group col">
                 <label>Estado del Período:</label>
                 <input :value="periodoActivo?.estado || 'ACTIVO'" disabled />
@@ -160,36 +160,36 @@
 
             <h4 class="section-title">Evaluación de Dirección</h4>
             <div class="row">
-              <label class="form-group col">
-                Inicio de evaluación
+              <div class="form-group col">
+                <label>Inicio de evaluación:</label>
                 <input v-model="formConfig.fecha_inicio_evaluacion" type="date" required />
-              </label>
-              <label class="form-group col">
-                Fin de evaluación
+              </div>
+              <div class="form-group col">
+                <label>Fin de evaluación:</label>
                 <input v-model="formConfig.fecha_fin_evaluacion" type="date" :min="formConfig.fecha_inicio_evaluacion" required />
-              </label>
+              </div>
             </div>
 
             <h4 class="section-title">Inscripción en CPD</h4>
             <div class="row">
-              <label class="form-group col">
-                Inicio de inscripción
+              <div class="form-group col">
+                <label>Inicio de inscripción:</label>
                 <input v-model="formConfig.fecha_inicio_ejecucion" type="date" required />
-              </label>
-              <label class="form-group col">
-                Fin de inscripción
+              </div>
+              <div class="form-group col">
+                <label>Fin de inscripción:</label>
                 <input v-model="formConfig.fecha_fin_ejecucion" type="date" :min="formConfig.fecha_inicio_ejecucion" required />
-              </label>
+              </div>
             </div>
+          </div>
 
-            <div class="modal-footer">
-              <button type="button" @click="modalConfigPeriodo = false" class="btn-secondary">Cancelar</button>
-              <button type="submit" class="btn-primary" :disabled="guardandoConfig">
-                {{ guardandoConfig ? 'Guardando...' : 'Guardar Parámetros' }}
-              </button>
-            </div>
-          </form>
-        </div>
+          <div class="modal-footer">
+            <button type="button" @click="modalConfigPeriodo = false" class="btn-secondary">Cancelar</button>
+            <button type="submit" class="btn-primary" :disabled="guardandoConfig">
+              {{ guardandoConfig ? 'Guardando...' : 'Guardar Parámetros' }}
+            </button>
+          </div>
+        </form>
       </div>
     </div>
 
@@ -593,6 +593,7 @@ onMounted(actualizarPanel);
   display: flex;
   flex-direction: column;
   max-height: 90vh;
+  box-sizing: border-box;
 }
 
 .modal-box.modal-respuesta {
@@ -601,12 +602,11 @@ onMounted(actualizarPanel);
   padding: clamp(.75rem, 3vw, 1.5rem);
 }
 
-.modal-respuesta .modal-header,
-.modal-respuesta .modal-footer {
+.modal-header {
   flex-shrink: 0;
 }
 
-.modal-respuesta .modal-form {
+.modal-form {
   display: flex;
   flex-direction: column;
   flex: 1 1 auto;
@@ -614,22 +614,21 @@ onMounted(actualizarPanel);
   min-width: 0;
 }
 
-.respuesta-campos {
+.modal-body-scroll {
+  overflow-y: auto;
+  flex: 1 1 auto;
   min-height: 0;
-  overflow: auto;
-  overscroll-behavior: contain;
-  padding: .125rem .25rem;
+  padding-right: 0.5rem;
 }
 
-.modal-respuesta .table-responsive select,
-.modal-respuesta .table-responsive input {
-  min-width: 8rem;
-}
-
-.modal-respuesta .modal-footer {
-  flex-wrap: wrap;
-  margin-top: .5rem;
-  padding-top: .75rem;
+.modal-footer {
+  flex-shrink: 0;
+  display: flex;
+  justify-content: flex-end;
+  gap: 0.8rem;
+  margin-top: 1rem;
+  border-top: 1px solid var(--border);
+  padding-top: 1rem;
 }
 
 .modal-box.modal-lg {
@@ -667,19 +666,6 @@ onMounted(actualizarPanel);
 .btn-close:hover {
   background: var(--surface-alt);
   color: var(--text);
-}
-.modal-body-scroll {
-  overflow-y: auto;
-  max-height: calc(90vh - 120px);
-  padding-right: 0.5rem;
-}
-.modal-footer {
-  display: flex;
-  justify-content: flex-end;
-  gap: 0.8rem;
-  margin-top: 1.5rem;
-  border-top: 1px solid var(--border);
-  padding-top: 1rem;
 }
 .section-title {
   font-size: 0.98rem;
