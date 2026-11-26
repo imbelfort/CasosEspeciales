@@ -498,6 +498,8 @@ The system runs predominantly flat. Elevation is reserved for two interaction la
 - Pressed state `button-buy-cta-pressed` deepens background to `{colors.primary-deep}`.
 - This variant ONLY appears inside the buy-now configurator and PDP purchase rail. Marketing surfaces use `button-primary` instead.
 
+HH
+
 **`button-secondary`** — Outlined ghost CTA, often paired with primary in dual-CTA hero patterns.
 - Background transparent, text `{colors.ink-deep}`, border `2px solid {colors.ink-deep}`, typography `{typography.button-md}`, padding `12px 28px`, rounded `{rounded.full}`.
 
