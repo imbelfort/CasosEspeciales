@@ -66,12 +66,15 @@
         <!-- Formulario de Acceso -->
         <form @submit.prevent="handleLogin" class="meta-form">
           <div class="form-group">
-            <label>Correo Electrónico Institucional:</label>
+            <label for="login-email">Correo Electrónico Institucional:</label>
             <div class="input-container">
               <Mail :size="16" class="input-icon" />
-              <input 
-                v-model="form.email" 
-                type="email" 
+              <input
+                id="login-email"
+                v-model="form.email"
+                type="email"
+                autocomplete="username"
+                autocapitalize="none"
                 required 
                 placeholder="ejemplo@ficct.uagrm.edu.bo" 
                 class="meta-input"
@@ -80,12 +83,14 @@
           </div>
 
           <div class="form-group">
-            <label>Contraseña:</label>
+            <label for="login-password">Contraseña:</label>
             <div class="input-container">
               <Lock :size="16" class="input-icon" />
-              <input 
-                v-model="form.password" 
-                type="password" 
+              <input
+                id="login-password"
+                v-model="form.password"
+                type="password"
+                autocomplete="current-password"
                 required 
                 placeholder="••••••••" 
                 class="meta-input"
@@ -269,7 +274,7 @@ const handleLogin = async () => {
 }
 .role-pills-grid {
   display: grid;
-  grid-template-columns: repeat(2, 1fr);
+  grid-template-columns: repeat(2, minmax(0, 1fr));
   gap: 0.45rem;
 }
 .role-pill-btn {
@@ -320,6 +325,7 @@ const handleLogin = async () => {
 }
 .meta-input {
   width: 100%;
+  min-width: 0;
   padding: 0.72rem 0.9rem 0.72rem 2.5rem;
   border: 1px solid var(--border);
   border-radius: var(--radius-lg, 8px);
@@ -344,6 +350,7 @@ const handleLogin = async () => {
   display: flex;
   align-items: center;
   gap: 0.4rem;
+  overflow-wrap: anywhere;
 }
 
 /* Botón Primario estilo Pill */
@@ -395,5 +402,35 @@ const handleLogin = async () => {
   border-radius: 4px;
   color: var(--text);
   font-family: monospace;
+}
+
+@media (max-width: 36rem) {
+  .meta-auth-page {
+    padding: 0;
+  }
+
+  .card-header,
+  .card-body {
+    padding: 1rem;
+  }
+
+  .role-selector-block {
+    margin-bottom: 1rem;
+    padding-bottom: 0.85rem;
+  }
+
+  .role-pill-btn {
+    padding-inline: 0.4rem;
+  }
+
+  .role-pill-btn,
+  .meta-input,
+  .meta-btn-primary {
+    min-height: 44px;
+  }
+
+  .meta-input {
+    font-size: 16px;
+  }
 }
 </style>

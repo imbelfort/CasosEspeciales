@@ -46,7 +46,7 @@
 
     <footer class="app-footer">
       <div class="footer-content">
-        <p class="footer-brand"><strong><a href="http://localhost:5173/">Casos Especiales</a></strong></p>
+        <p class="footer-brand"><strong><router-link to="/">Casos Especiales</router-link></strong></p>
         <ViewCounter />
       </div>
     </footer>
@@ -157,6 +157,12 @@ onMounted(async () => {
 .footer-brand a:focus-visible {
   outline: 2px solid var(--text);
   outline-offset: 2px;
+}
+@media (max-width: 36rem) {
+  .footer-content {
+    flex-direction: column;
+    text-align: center;
+  }
 }
 .content-wrapper {
   flex: 1;
