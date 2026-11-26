@@ -92,28 +92,12 @@ class SolicitudController extends Controller
                 ], 422);
             }
 
-            // Generar secuencial CE-YYYY-NNNN
-            $anio = date('Y');
-            $ultimoId = DB::table('solicitud')->max('id') ?? 0;
-            $siguienteNumero = str_pad($ultimoId + 1, 4, '0', STR_PAD_LEFT);
-            $codigo = "CE-{$anio}-{$siguienteNumero}";
-
-            $solicitud = Solicitud::create([
-                'codigo' => $codigo,
-                'id_estudiante' => $user->id_usuario,
-                'id_periodo' => $periodo->id,
-                'tipo_caso' => $validated['tipo_caso'] ?? 'CASO_ESPECIAL',
-                'motivo' => $validated['motivo'],
-                'estado' => 'ENVIADA',
-                'fecha_solicitud' => now(),
-            ]);
-
             $estudiante = Estudiante::findOrFail($user->id_usuario);
-            $gruposRegistradosIds = [];
+            $gruposValidados = [];
 
             foreach ($gruposASolicitar as $itemGrupo) {
                 $idG = $itemGrupo['id_grupo'];
-                if (in_array($idG, $gruposRegistradosIds)) continue;
+                if (isset($gruposValidados[$idG])) continue;
 
                 $grupo = Grupo::with('materia')->findOrFail($idG);
 
@@ -142,13 +126,47 @@ class SolicitudController extends Controller
                     ], 422);
                 }
 
-                SolicitudGrupo::create([
-                    'id_solicitud' => $solicitud->id,
+                $materiaInscrita = DB::table('estudiante_materia_historial')
+                    ->where('id_estudiante', $user->id_usuario)
+                    ->where('id_materia', $grupo->id_materia)
+                    ->where('gestion', $periodo->gestion)
+                    ->whereIn('estado_materia', ['INSCRITA', 'CURSANDO'])
+                    ->exists();
+
+                if ($materiaInscrita) {
+                    return response()->json([
+                        'error' => "Ya tienes inscrita la materia {$grupo->materia?->sigla} en la gestión {$periodo->gestion}."
+                    ], 422);
+                }
+
+                $gruposValidados[$idG] = [
                     'id_grupo' => $grupo->id,
                     'motivo' => $itemGrupo['motivo'] ?? 'Materia solicitada en el registro del caso',
-                    'estado' => 'PENDIENTE'
+                    'estado' => 'PENDIENTE',
+                ];
+            }
+
+            // Generar secuencial CE-YYYY-NNNN
+            $anio = date('Y');
+            $ultimoId = DB::table('solicitud')->max('id') ?? 0;
+            $siguienteNumero = str_pad($ultimoId + 1, 4, '0', STR_PAD_LEFT);
+            $codigo = "CE-{$anio}-{$siguienteNumero}";
+
+            $solicitud = Solicitud::create([
+                'codigo' => $codigo,
+                'id_estudiante' => $user->id_usuario,
+                'id_periodo' => $periodo->id,
+                'tipo_caso' => $validated['tipo_caso'] ?? 'CASO_ESPECIAL',
+                'motivo' => $validated['motivo'],
+                'estado' => 'ENVIADA',
+                'fecha_solicitud' => now(),
+            ]);
+
+            foreach ($gruposValidados as $grupoValidado) {
+                SolicitudGrupo::create([
+                    'id_solicitud' => $solicitud->id,
+                    ...$grupoValidado,
                 ]);
-                $gruposRegistradosIds[] = $idG;
             }
 
             // Si adjuntó archivo de respaldo inicial

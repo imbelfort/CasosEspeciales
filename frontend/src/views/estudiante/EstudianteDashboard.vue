@@ -17,13 +17,21 @@
         </p>
       </div>
       <div class="header-action-buttons">
-        <!-- BOTÓN PARA ABRIR EL VISOR EN MODAL LIMPIO -->
+        <!-- BOTONES PARA VISORES SEPARADOS DE MALLA E HISTÓRICO (CU2) -->
         <button 
-          @click="modalAvance = true" 
+          @click="modalMalla = true"
           class="btn-malla"
-          title="Ver Malla Curricular interactiva e Historial Académico"
+          title="Ver Malla Curricular Digital interactiva"
         >
-          <GraduationCap :size="16" class="btn-icon" /> Ver Malla e Historial Académico
+          <GraduationCap :size="16" class="btn-icon" /> Malla Curricular
+        </button>
+
+        <button
+          @click="modalHistorial = true"
+          class="btn-secondary"
+          title="Ver Historial Académico de asignaturas y notas"
+        >
+          <ListChecks :size="16" class="btn-icon" /> Historial Académico
         </button>
 
         <button 
@@ -328,17 +336,22 @@
 
     <ExpedienteSolicitudDialog ref="expediente" estudiante />
 
-    <!-- MODAL MALLA CURRICULAR E HISTORIAL ACADÉMICO -->
-    <ModalAvanceAcademico
-      :visible="modalAvance"
+    <!-- MODAL SEPARADO 1: MALLA CURRICULAR DIGITAL -->
+    <ModalMallaCurricular
+      :visible="modalMalla"
       :materias="materias"
-      :historico-lista="historicoAcademico"
-      :historico-map="historicoMap"
+      :materias-aprobadas-ids="materiasAprobadasIds"
+      :materias-inscritas-ids="materiasInscritasIds"
       :materias-solicitadas-ids="materiasSolicitadasActivas"
-      :materia-seleccionada="materiaSeleccionadaMalla"
-      :semestre-actual="props.usuario?.estudiante?.semestre_actual || 5"
-      @close="modalAvance = false"
-      @select-materia="seleccionarMateriaDesdeMalla"
+      @close="modalMalla = false"
+      @select-materia="solicitarMateriaDesdeVisor"
+    />
+
+    <!-- MODAL SEPARADO 2: HISTORIAL ACADÉMICO -->
+    <ModalHistorialAcademico
+      :visible="modalHistorial"
+      :historico-lista="historicoAcademico"
+      @close="modalHistorial = false"
     />
 
   </div>
@@ -364,12 +377,14 @@ import {
   Download,
   Trash2,
   AlertCircle,
-  GraduationCap
+  GraduationCap,
+  ListChecks
 } from '@lucide/vue';
 import ExpedienteSolicitudDialog from '../../components/common/ExpedienteSolicitudDialog.vue';
 import PagoQrModal from '../../components/pago/PagoQrModal.vue';
 import logoStripe from '../../assets/stripe.svg';
-import ModalAvanceAcademico from '../../components/estudiante/ModalAvanceAcademico.vue';
+import ModalMallaCurricular from '../../components/estudiante/ModalMallaCurricular.vue';
+import ModalHistorialAcademico from '../../components/estudiante/ModalHistorialAcademico.vue';
 import EtapasCronograma from '../../components/common/EtapasCronograma.vue';
 import api from '../../services/api';
 
@@ -394,14 +409,6 @@ const materias = ref([]);
 const historicoAcademico = ref([]);
 const loading = ref(false);
 
-const historicoMap = computed(() => {
-  const map = {};
-  historicoAcademico.value.forEach(h => {
-    map[h.id_materia] = h;
-  });
-  return map;
-});
-
 const descargasCarta = ref(new Set());
 
 async function descargarCarta(sol) {
@@ -425,9 +432,8 @@ async function descargarCarta(sol) {
   }
 }
 
-const materiaSeleccionadaMalla = ref(null);
-
-const modalAvance = ref(false);
+const modalMalla = ref(false);
+const modalHistorial = ref(false);
 const modalNueva = ref(false);
 const tituloRegistro = ref(null);
 const datosInicialesCargados = ref(false);
@@ -474,16 +480,29 @@ const limiteCarreraAlcanzado = computed(() => {
   return totalCasosCarrera.value >= maxCarrera;
 });
 
+const materiasAprobadasIds = computed(() => new Set(
+  historicoAcademico.value
+    .filter(h => h.estado_materia === 'APROBADA' || Number(h.nota_final) >= 51)
+    .map(h => h.id_materia)
+));
+
+const obtenerMateriasInscritasIds = (gestion) => new Set(
+  historicoAcademico.value
+    .filter(h => h.gestion === gestion && ['INSCRITA', 'CURSANDO'].includes(h.estado_materia))
+    .map(h => h.id_materia)
+);
+
+const materiasInscritasIds = computed(() => obtenerMateriasInscritasIds(periodoActivo.value?.gestion));
+const materiasInscritasEnPeriodoForm = computed(() => {
+  const periodo = periodos.value.find(p => p.id === formNueva.value.id_periodo);
+  return obtenerMateriasInscritasIds(periodo?.gestion);
+});
+
 const materiasDisponiblesParaAgregar = computed(() => {
   const idsGruposElegidos = materiasSeleccionadasForm.value.map(m => m.id_grupo);
 
-  // Obtener IDs de materias ya aprobadas o cursadas satisfactoriamente
-  const idsMateriasAprobadas = historicoAcademico.value
-    .filter(h => h.estado_materia === 'APROBADA' || (h.nota_final && h.nota_final >= 51))
-    .map(h => h.id_materia);
-
   return materias.value
-    .filter(m => !idsMateriasAprobadas.includes(m.id)) // Excluir materias aprobadas
+    .filter(m => !materiasAprobadasIds.value.has(m.id) && !materiasInscritasEnPeriodoForm.value.has(m.id))
     .map(m => ({
       ...m,
       grupos: (m.grupos || []).filter(g => !idsGruposElegidos.includes(g.id))
@@ -660,53 +679,44 @@ const materiasSolicitadasActivas = computed(() => {
   return ids;
 });
 
-const seleccionarMateriaDesdeMalla = (materia) => {
-  // Validar si la materia ya fue aprobada
-  const yaAprobada = historicoAcademico.value.some(
-    h => h.id_materia === materia.id && (h.estado_materia === 'APROBADA' || (h.nota_final && h.nota_final >= 51))
-  );
-  if (yaAprobada) {
+const solicitarMateriaDesdeVisor = (materia) => {
+  if (materiasAprobadasIds.value.has(materia.id)) {
     alert(`La materia ${materia.sigla} (${materia.nombre}) ya fue aprobada previamente. No es posible solicitarla en caso especial.`);
     return;
   }
 
-  if (materiaSeleccionadaMalla.value?.id === materia.id) {
-    materiaSeleccionadaMalla.value = null;
+  if (materiasInscritasIds.value.has(materia.id)) {
+    alert(`Ya tienes inscrita la materia ${materia.sigla} en esta gestión.`);
     return;
   }
-  materiaSeleccionadaMalla.value = materia;
 
-  // Cerrar el modal del visor de avance si estaba abierto
-  modalAvance.value = false;
+  if (!abrirModalRegistro()) return;
 
-  abrirModalRegistro();
+  modalMalla.value = false;
+  modalHistorial.value = false;
 
-  // Si tiene grupos disponibles y no ha alcanzado límite, añadirlo automáticamente
-  if (materia.grupos && materia.grupos.length > 0) {
-    const gId = materia.grupos[0].id;
-    if (!materiasSeleccionadasForm.value.some(m => m.id_grupo === gId)) {
-      if (materiasSeleccionadasForm.value.length < limiteMateriasCaso.value) {
-        materiasSeleccionadasForm.value.push({
-          id_grupo: gId,
-          motivo: `Solicitud de levantamiento / caso especial para ${materia.sigla}`
-        });
-      }
-    }
+  const grupo = materia.grupos?.[0];
+  if (grupo && limiteMateriasCaso.value > 0) {
+    materiasSeleccionadasForm.value.push({
+      id_grupo: grupo.id,
+      motivo: `Solicitud de levantamiento / caso especial para ${materia.sigla}`
+    });
   }
 };
 
 const abrirModalRegistro = () => {
   if (limiteCarreraAlcanzado.value) {
     alert('Has alcanzado el límite institucional máximo de 5 casos especiales aprobados en toda tu carrera.');
-    return;
+    return false;
   }
 
-  if (periodos.value.length) formNueva.value.id_periodo = periodos.value[0].id;
+  formNueva.value.id_periodo = periodoActivo.value?.id ?? '';
   archivoRespaldoInicial.value = null;
   materiasSeleccionadasForm.value = [];
   grupoParaAgregar.value = '';
   formNueva.value.motivo = '';
   modalNueva.value = true;
+  return true;
 };
 
 const guardarSolicitud = async () => {
@@ -714,6 +724,13 @@ const guardarSolicitud = async () => {
     alert('Debes agregar al menos 1 materia para solicitar el caso especial.');
     return;
   }
+  const materiaInscrita = materias.value.find(m => materiasInscritasEnPeriodoForm.value.has(m.id)
+    && m.grupos?.some(g => materiasSeleccionadasForm.value.some(seleccion => seleccion.id_grupo === g.id)));
+  if (materiaInscrita) {
+    alert(`Quita ${materiaInscrita.sigla} de la solicitud. Ya la tienes inscrita en la gestión seleccionada.`);
+    return;
+  }
+
   loading.value = true;
   try {
     const fd = new FormData();
@@ -920,13 +937,14 @@ watch(
   () => [route.path, route.query.accion, datosInicialesCargados.value, props.usuario],
   ([path, accion, cargados, usuario]) => {
     if (path !== '/estudiante' || !cargados || !usuario?.roles?.some(rol => rol.nombre === 'ESTUDIANTE')) return;
-    if (accion !== 'crear' && accion !== 'malla') return;
+    if (accion !== 'crear' && accion !== 'malla' && accion !== 'historico') return;
 
     if (accion === 'crear') {
       if (!modalNueva.value) abrirModalRegistro();
       nextTick(() => tituloRegistro.value?.focus({ preventScroll: true }));
     }
-    if (accion === 'malla') modalAvance.value = true;
+    if (accion === 'malla') modalMalla.value = true;
+    if (accion === 'historico') modalHistorial.value = true;
     router.replace({ path, query: { ...route.query, accion: undefined }, hash: route.hash });
   },
 );

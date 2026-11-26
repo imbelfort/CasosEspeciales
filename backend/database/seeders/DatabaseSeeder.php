@@ -37,20 +37,43 @@ class DatabaseSeeder extends Seeder
             DB::table('carrera')->updateOrInsert(['id' => $c['id']], $c);
         }
 
-        // 3. Período Académico Activo y Cronograma de Casos Especiales (23 al 28 de marzo)
+        // 3. Período Académico Activo y Cronograma de Casos Especiales
+        // A) Período histórico finalizado para registrar casos especiales anteriores
+        DB::table('periodos')->updateOrInsert(
+            ['gestion' => '2-2025'],
+            [
+                'fecha_inicio' => '2025-08-01',
+                'fecha_fin' => '2025-12-20',
+                'estado' => 'FINALIZADO',
+                'fecha_inicio_solicitud' => '2025-08-01',
+                'fecha_fin_solicitud' => '2025-08-05',
+                'fecha_inicio_evaluacion' => '2025-08-06',
+                'fecha_fin_evaluacion' => '2025-08-10',
+                'fecha_inicio_ejecucion' => '2025-08-11',
+                'fecha_fin_ejecucion' => '2025-08-15',
+                'costo_arancel_caso' => 10.00,
+                'max_materias_por_caso' => 5,
+                'max_casos_carrera' => 5,
+            ]
+        );
+        $periodoAnteriorId = DB::table('periodos')->where('gestion', '2-2025')->value('id');
+
+        // B) Período Activo: Recepción desde el 26 de noviembre al 30 de noviembre, y etapas posteriores
         DB::table('periodos')->updateOrInsert(
             ['gestion' => '1-2026'],
             [
-                'fecha_inicio' => '2026-03-23',
-                'fecha_fin' => '2026-07-31',
+                'fecha_inicio' => '2026-11-20',
+                'fecha_fin' => '2026-12-31',
                 'estado' => 'ACTIVO',
-                'fecha_inicio_solicitud' => '2026-03-23',
-                'fecha_fin_solicitud' => '2026-03-24',
-                'fecha_inicio_evaluacion' => '2026-03-25',
-                'fecha_fin_evaluacion' => '2026-03-26',
-                'fecha_inicio_ejecucion' => '2026-03-27',
-                'fecha_fin_ejecucion' => '2026-03-28',
+                'fecha_inicio_solicitud' => '2026-11-26',
+                'fecha_fin_solicitud' => '2026-11-30',
+                'fecha_inicio_evaluacion' => '2026-12-01',
+                'fecha_fin_evaluacion' => '2026-12-04',
+                'fecha_inicio_ejecucion' => '2026-12-05',
+                'fecha_fin_ejecucion' => '2026-12-08',
                 'costo_arancel_caso' => 10.00,
+                'max_materias_por_caso' => 5,
+                'max_casos_carrera' => 5,
             ]
         );
 
