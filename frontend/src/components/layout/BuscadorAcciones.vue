@@ -69,6 +69,7 @@ const paginas = [
   { nombre: 'Control de cupos', palabras: 'grupos reservas ampliar disponibilidad', destino: { path: '/direccion', query: { seccion: 'cupos' } } },
   { nombre: 'Oficios a CPD', palabras: 'remitir generar oficio csv', destino: { path: '/direccion', query: { seccion: 'oficios' } } },
   { nombre: 'Procesamiento CPD', palabras: 'pendientes habilitar solicitudes oficios remitidos', destino: '/cpd' },
+  { nombre: 'Registro de usuarios', palabras: 'registrar alumnos personal académico director cuentas CPD', destino: '/cpd/usuarios' },
   { nombre: 'Bitácora CPD', palabras: 'logs auditoria accesos inicio sesion intentos fallidos direcciones ip', destino: '/cpd/bitacora' },
   { nombre: 'Reportes y estadísticas', palabras: 'graficos barra torta dona datos', destino: '/reportes', icono: BarChart3 },
 ];

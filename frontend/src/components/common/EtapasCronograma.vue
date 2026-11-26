@@ -1,5 +1,28 @@
 <template>
-  <div class="etapas-widget-container">
+  <section v-if="compacto" class="etapas-compactas" aria-label="Cronograma de casos especiales">
+    <header>
+      <h2>Cronograma de casos especiales</h2>
+      <span v-if="periodo?.gestion">Gestión {{ gestionCorta }}</span>
+    </header>
+    <p v-if="!periodo">Fechas por definir.</p>
+    <ol v-else class="ruta-etapas" role="list">
+      <li v-for="etapa in etapas" :key="etapa.id" class="ruta-etapa" :data-estado="etapa.estado">
+        <div class="ruta-marca" aria-hidden="true">
+          <Check v-if="etapa.estado === 'completed'" :size="16" :stroke-width="3" />
+          <Clock v-else-if="etapa.estado === 'active'" :size="16" />
+          <span v-else>{{ etapa.id }}</span>
+        </div>
+        <div class="ruta-detalle">
+          <strong>{{ etapa.nombre }}</strong>
+          <span>{{ etapa.fechasTexto }}</span>
+          <small v-if="etapa.estado !== 'unconfigured'">
+            {{ etapa.estado === 'active' ? 'En curso' : etiquetasEstado[etapa.estado] }}
+          </small>
+        </div>
+      </li>
+    </ol>
+  </section>
+  <div v-else class="etapas-widget-container">
     <div class="etapas-header">
       <div class="header-left">
         <Sparkles :size="18" class="text-primary inline-icon" />
@@ -49,17 +72,22 @@ const props = defineProps({
   periodo: {
     type: Object,
     default: null
-  }
+  },
+  compacto: Boolean
 });
 
-const gestionFormateada = computed(() => {
+const gestionCorta = computed(() => {
   const g = props.periodo?.gestion || '1-2026';
   const parts = g.split('-');
   if (parts.length === 2) {
     const sem = parts[0] === '1' ? 'I' : (parts[0] === '2' ? 'II' : parts[0]);
-    return `${sem}-${parts[1]} (${parts[0]}-${parts[1]})`;
+    return `${sem}-${parts[1]}`;
   }
   return g;
+});
+const gestionFormateada = computed(() => {
+  const gestion = props.periodo?.gestion || '1-2026';
+  return gestion.split('-').length === 2 ? `${gestionCorta.value} (${gestion})` : gestion;
 });
 
 const formatoFecha = new Intl.DateTimeFormat('es-BO', {
@@ -109,6 +137,139 @@ const estadoCronograma = computed(() => {
 </script>
 
 <style scoped>
+.etapas-compactas {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-xl);
+  padding: 1rem;
+  margin-bottom: 1.25rem;
+  container-type: inline-size;
+}
+
+.etapas-compactas header {
+  display: flex;
+  align-items: baseline;
+  flex-wrap: wrap;
+  gap: .25rem .75rem;
+  margin-bottom: .75rem;
+}
+
+.etapas-compactas h2 {
+  margin: 0;
+  font-size: 1rem;
+}
+
+.etapas-compactas :is(header span, .ruta-detalle span, small, p) {
+  color: var(--text-muted);
+  font-size: .875rem;
+}
+
+.ruta-etapas {
+  --etapa-marca: 1.875rem;
+  --etapa-acento: var(--primary-text);
+  --etapa-fondo-completada: var(--primary-subtle);
+  display: grid;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.ruta-etapa {
+  position: relative;
+  display: grid;
+  grid-template-columns: var(--etapa-marca) minmax(0, 1fr);
+  gap: .625rem;
+  padding-bottom: .875rem;
+  font-size: .875rem;
+}
+
+.ruta-etapa:last-child {
+  padding-bottom: 0;
+}
+
+.ruta-etapa:not(:last-child)::after {
+  content: '';
+  position: absolute;
+  inset-block-start: calc(var(--etapa-marca) / 2);
+  inset-inline-start: calc((var(--etapa-marca) - 2px) / 2);
+  block-size: 100%;
+  border-inline-start: 2px dashed var(--text-muted);
+  pointer-events: none;
+}
+
+.ruta-etapa[data-estado="completed"]::after {
+  border-inline-start-style: solid;
+  border-color: var(--etapa-acento);
+}
+
+.ruta-marca {
+  position: relative;
+  z-index: 1;
+  display: grid;
+  place-items: center;
+  inline-size: var(--etapa-marca);
+  block-size: var(--etapa-marca);
+  border: 1px solid var(--text-muted);
+  border-radius: 50%;
+  background: var(--surface);
+  color: var(--text-muted);
+  font-weight: 700;
+}
+
+.ruta-etapa[data-estado="completed"] .ruta-marca {
+  background: var(--etapa-fondo-completada);
+  border-color: var(--etapa-acento);
+  color: var(--etapa-acento);
+}
+
+.ruta-etapa[data-estado="active"] .ruta-marca {
+  border: 2px solid var(--text);
+  color: var(--text);
+}
+
+.ruta-detalle {
+  display: grid;
+  justify-items: start;
+  gap: .125rem;
+  padding: .25rem .5rem .25rem 0;
+  overflow-wrap: anywhere;
+}
+
+.ruta-etapa[data-estado="active"] small {
+  font-weight: 700;
+  color: var(--text);
+}
+
+:global([data-contrast="high"]) .ruta-etapas {
+  --etapa-acento: var(--text);
+  --etapa-fondo-completada: var(--surface);
+}
+
+@container (min-width: 42rem) {
+  .ruta-etapas {
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+  }
+
+  .ruta-etapa {
+    grid-template-columns: minmax(0, 1fr);
+    align-content: start;
+    padding-bottom: 0;
+    gap: .375rem;
+  }
+
+  .ruta-etapa:not(:last-child)::after {
+    inset-inline: calc(var(--etapa-marca) + .25rem) .25rem;
+    block-size: 0;
+    border-inline-start: 0;
+    border-block-start: 2px dashed var(--text-muted);
+  }
+
+  .ruta-etapa[data-estado="completed"]::after {
+    border-block-start-style: solid;
+    border-color: var(--etapa-acento);
+  }
+}
+
 .etapas-widget-container {
   background-color: var(--surface);
   border: 1px solid var(--border);

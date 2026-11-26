@@ -21,9 +21,12 @@
         </template>
 
         <!-- VISTAS DE CPD -->
-        <template v-if="rolActual === 'CPD'">
+        <template v-if="usuario.roles?.some(rol => rol.nombre === 'CPD')">
           <router-link to="/cpd" class="nav-link">
             Procesamiento CPD
+          </router-link>
+          <router-link to="/cpd/usuarios" class="nav-link">
+            Registro de usuarios
           </router-link>
         </template>
         <router-link v-if="usuario.roles?.some(rol => ['CPD', 'DIRECTOR', 'PERSONAL_ACADEMICO'].includes(rol.nombre))" to="/reportes" class="nav-link">

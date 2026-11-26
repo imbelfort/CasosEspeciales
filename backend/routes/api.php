@@ -79,6 +79,10 @@ Route::middleware([RegistrarBitacoraCpd::class, 'auth:sanctum'])->group(function
 
     // CU6: CPD
     Route::get('/cpd/pendientes', [CpdController::class, 'pendientes']);
+    Route::get('/cpd/usuarios', [UsuarioAdminController::class, 'listarCpd']);
+    Route::get('/cpd/usuarios/{id}', [UsuarioAdminController::class, 'consultarEdicionCpd'])->whereNumber('id');
+    Route::patch('/cpd/usuarios/{id}', [UsuarioAdminController::class, 'actualizarCpd'])->whereNumber('id');
+    Route::get('/cpd/oficios-emitidos', [CpdController::class, 'oficiosEmitidos']);
     Route::get('/cpd/pagos-stripe', [CpdController::class, 'pagosStripe']);
     Route::get('/cpd/bitacora', [BitacoraCpdController::class, 'index']);
     Route::post('/cpd/responder', [CpdController::class, 'responder']);

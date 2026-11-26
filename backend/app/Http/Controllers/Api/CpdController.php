@@ -10,9 +10,41 @@ use App\Models\Solicitud;
 use App\Services\AuditoriaNotificacionService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Validator;
 
 class CpdController extends Controller
 {
+    public function oficiosEmitidos(Request $request)
+    {
+        $this->autorizarConsulta($request);
+
+        return OficioCpd::query()
+            ->where('estado', 'EMITIDO')
+            ->select(['id', 'numero_oficio', 'destinatario', 'referencia', 'fecha_remision', 'id_solicitud'])
+            ->withCount(['solicitudes', 'solicitudes as pendientes_count' => fn ($query) => $query->where('solicitud.estado', 'REMITIDA_A_CPD')])
+            ->with('solicitudPrincipal:id,estado')
+            ->orderByDesc('fecha_remision')
+            ->orderByDesc('id')
+            ->paginate(12)
+            ->through(fn (OficioCpd $oficio) => [
+                'id' => $oficio->id,
+                'numero_oficio' => $oficio->numero_oficio,
+                'destinatario' => $oficio->destinatario,
+                'referencia' => $oficio->referencia,
+                'fecha_remision' => $oficio->fecha_remision,
+                'solicitudes_count' => $oficio->solicitudes_count ?: (int) ($oficio->solicitudPrincipal !== null),
+                'pendientes_count' => $oficio->solicitudes_count
+                    ? $oficio->pendientes_count
+                    : (int) ($oficio->solicitudPrincipal?->estado === 'REMITIDA_A_CPD'),
+            ]);
+    }
+
+    private function autorizarConsulta(Request $request): void
+    {
+        $user = $request->user();
+        abort_unless($user->tieneRol('CPD') || $user->tieneRol('DIRECTOR'), 403, 'Acceso restringido a CPD.');
+    }
+
     public function pagosStripe(Request $request)
     {
         abort_unless($request->user()->tieneRol('CPD'), 403);
@@ -35,7 +67,9 @@ class CpdController extends Controller
             return response()->json(['error' => 'Acceso restringido a CPD.'], 403);
         }
 
-        $oficios = OficioCpd::with(['responsable', 'solicitudes.estudiante.usuario', 'solicitudes.grupos.grupo.materia', 'solicitudes.archivos'])
+        $oficios = OficioCpd::with(['responsable'])
+            ->withWhereHas('solicitudes', fn ($query) => $query->where('solicitud.estado', 'REMITIDA_A_CPD')
+                ->with(['estudiante.usuario', 'grupos.grupo.materia', 'archivos']))
             ->where('estado', 'EMITIDO')
             ->orderBy('id', 'desc')
             ->get();
@@ -60,7 +94,7 @@ class CpdController extends Controller
         $validated = $request->validate([
             'id_oficio' => 'required|integer|exists:oficio_cpd,id',
             'id_solicitud' => 'required|integer|exists:solicitud,id',
-            'codigo_respuesta' => 'required|string|max:50|unique:oficio_respuesta_cpd,codigo_respuesta',
+            'codigo_respuesta' => 'required|string|max:50',
             'resultado' => 'required|string|in:HABILITADO,OBSERVADO,RECHAZADO',
             'observaciones' => 'nullable|string',
             'referencia_respaldo' => 'nullable|string|max:150',
@@ -77,9 +111,15 @@ class CpdController extends Controller
 
             if ($solicitud->estado !== 'REMITIDA_A_CPD') {
                 return response()->json([
-                    'error' => "La solicitud no se encuentra en estado REMITIDA_A_CPD (actual: {$solicitud->estado})."
-                ], 422);
+                    'error' => 'La solicitud ya no está pendiente de resolución en CPD.',
+                    'codigo' => 'SOLICITUD_NO_PENDIENTE',
+                    'estado' => $solicitud->estado,
+                ], 409);
             }
+
+            Validator::make($validated, [
+                'codigo_respuesta' => 'unique:oficio_respuesta_cpd,codigo_respuesta',
+            ])->validate();
 
             $resultadoFinal = $validated['resultado'];
             $observacionesFinal = $validated['observaciones'] ?? null;

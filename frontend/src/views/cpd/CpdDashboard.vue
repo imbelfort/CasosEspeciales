@@ -15,78 +15,91 @@
       </div>
     </div>
 
-    <!-- OFICIOS REMITIDOS A CPD -->
-    <div v-for="oficio in oficios" :key="oficio.id" class="oficio-card">
-      <div class="oficio-header">
-        <div>
-          <strong class="code-tag">{{ oficio.numero_oficio }}</strong>
-          <span class="oficio-ref">{{ oficio.referencia }}</span>
+    <p v-if="avisoResolucion" role="status">{{ avisoResolucion }}</p>
+
+    <nav class="secciones-cpd" aria-label="Vistas de CPD">
+      <button v-for="seccion in secciones" :key="seccion.id" type="button" class="btn-action"
+        :aria-pressed="vista === seccion.id" @click="seleccionarVista(seccion.id)">{{ seccion.nombre }}</button>
+    </nav>
+
+    <section v-if="vista === 'pendientes'" aria-label="Solicitudes pendientes de CPD">
+      <p v-if="errorPendientes" role="alert">{{ errorPendientes }}</p>
+      <p v-else-if="cargandoPendientes" role="status">Cargando solicitudes pendientes…</p>
+      <!-- OFICIOS REMITIDOS A CPD -->
+      <div v-for="oficio in oficios" :key="oficio.id" class="oficio-card">
+        <div class="oficio-header">
+          <div>
+            <strong class="code-tag">{{ oficio.numero_oficio }}</strong>
+            <span class="oficio-ref">{{ oficio.referencia }}</span>
+          </div>
+          <span class="status-badge REMITIDA_A_CPD">Emitido</span>
         </div>
-        <span class="status-badge REMITIDA_A_CPD">Emitido</span>
-      </div>
 
-      <div class="table-responsive mt-3" tabindex="0" role="region" aria-label="Solicitudes del oficio">
-        <table class="data-table">
-          <thead>
-            <tr>
-              <th scope="col">Código Solicitud</th>
-              <th scope="col">Estudiante</th>
-              <th scope="col">Registro</th>
-              <th scope="col">Materia / Grupo</th>
-              <th scope="col">Acción Técnica</th>
-            </tr>
-          </thead>
-          <tbody>
-            <tr v-for="sol in oficio.solicitudes" :key="sol.id">
-              <td><strong>{{ sol.codigo }}</strong></td>
-              <td>{{ sol.estudiante?.usuario?.nombre }} {{ sol.estudiante?.usuario?.apellidos }}</td>
-              <td>{{ sol.estudiante?.registro_universitario }}</td>
-              <td>
-                <div v-for="sg in sol.grupos" :key="sg.id">
-                  {{ sg.grupo?.materia?.sigla }} - Gr. {{ sg.grupo?.sigla_grupo }}
-                </div>
-              </td>
-              <td>
-                <button @click="abrirRespuesta(oficio, sol)" class="btn-action btn-pay">
-                  <CheckSquare :size="14" class="inline-icon" /> Resolver CPD (CU6)
-                </button>
-              </td>
-            </tr>
-          </tbody>
-        </table>
-      </div>
-    </div>
-
-    <div v-if="oficios.length === 0" class="no-records">
-      No hay oficios pendientes de habilitación en CPD.
-    </div>
-
-    <section v-if="esCpd" class="oficio-card" aria-labelledby="titulo-pagos-stripe">
-      <h3 id="titulo-pagos-stripe">Pagos con tarjeta</h3>
-      <p v-if="errorPagosStripe" role="status">{{ errorPagosStripe }}</p>
-      <p v-else-if="cargandoPagosStripe" role="status">Cargando pagos…</p>
-      <p v-else-if="!pagosStripe?.data.length">Aún no hay pagos con tarjeta registrados.</p>
-      <div v-else class="table-responsive" tabindex="0" role="region" aria-label="Pagos con tarjeta">
-        <table class="data-table">
-          <thead>
-            <tr><th scope="col">Solicitud</th><th scope="col">Estudiante</th><th scope="col">Arancel</th><th scope="col">Estado del pago</th></tr>
-          </thead>
-          <tbody>
-            <tr v-for="pago in pagosStripe.data" :key="pago.id">
-              <td>{{ pago.solicitud?.codigo }}</td>
-              <td>{{ pago.usuario?.nombre }} {{ pago.usuario?.apellidos }}</td>
-              <td>{{ formatoArancel.format(pago.monto) }}</td>
-              <td><span :class="['status-badge', pago.estado]">{{ estadosPago[pago.estado] || pago.estado }}</span></td>
-            </tr>
-          </tbody>
-        </table>
-        <div v-if="pagosStripe.last_page > 1" class="mt-3">
-          <button type="button" class="btn-secondary" :disabled="pagosStripe.current_page <= 1"
-            @click="cargarPagosStripe(pagosStripe.current_page - 1)">Anterior</button>
-          <button type="button" class="btn-secondary" :disabled="!pagosStripe.next_page_url"
-            @click="cargarPagosStripe(pagosStripe.current_page + 1)">Siguiente</button>
+        <div class="table-responsive mt-3" tabindex="0" role="region" aria-label="Solicitudes del oficio">
+          <table class="data-table">
+            <thead>
+              <tr>
+                <th scope="col">Código Solicitud</th>
+                <th scope="col">Estudiante</th>
+                <th scope="col">Registro</th>
+                <th scope="col">Materia / Grupo</th>
+                <th scope="col">Acción Técnica</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr v-for="sol in oficio.solicitudes" :key="sol.id">
+                <td><strong>{{ sol.codigo }}</strong></td>
+                <td>{{ sol.estudiante?.usuario?.nombre }} {{ sol.estudiante?.usuario?.apellidos }}</td>
+                <td>{{ sol.estudiante?.registro_universitario }}</td>
+                <td>
+                  <div v-for="sg in sol.grupos" :key="sg.id">
+                    {{ sg.grupo?.materia?.sigla }} - Gr. {{ sg.grupo?.sigla_grupo }}
+                  </div>
+                </td>
+                <td>
+                  <button type="button" @click="abrirRespuesta(oficio, sol)" :disabled="loading" class="btn-action btn-pay">
+                    <CheckSquare :size="14" class="inline-icon" /> Resolver CPD (CU6)
+                  </button>
+                </td>
+              </tr>
+            </tbody>
+          </table>
         </div>
       </div>
+
+      <div v-if="!cargandoPendientes && !errorPendientes && oficios.length === 0" class="no-records">
+        No hay oficios pendientes de habilitación en CPD.
+      </div>
+    </section>
+
+    <section v-else class="oficio-card" aria-labelledby="titulo-oficios-emitidos">
+      <h3 id="titulo-oficios-emitidos">Oficios emitidos</h3>
+      <p v-if="errorEmitidos" role="alert">{{ errorEmitidos }}</p>
+      <p v-if="cargandoEmitidos" role="status">Cargando oficios…</p>
+      <p v-else-if="emitidos && !emitidos.data.length">Aún no hay oficios emitidos.</p>
+      <template v-if="emitidos?.data.length">
+        <div class="table-responsive" tabindex="0" role="region" aria-label="Historial de oficios emitidos">
+          <table class="data-table">
+            <thead>
+              <tr><th scope="col">Oficio</th><th scope="col">Fecha de remisión</th><th scope="col">Destinatario</th><th scope="col">Casos remitidos</th><th scope="col">Pendientes en CPD</th></tr>
+            </thead>
+            <tbody>
+              <tr v-for="oficio in emitidos.data" :key="oficio.id">
+                <th scope="row">{{ oficio.numero_oficio }}<small v-if="oficio.referencia" class="referencia-emitido">{{ oficio.referencia }}</small></th>
+                <td>{{ fechaOficio(oficio.fecha_remision) }}</td>
+                <td>{{ oficio.destinatario }}</td>
+                <td>{{ entero.format(oficio.solicitudes_count) }}</td>
+                <td>{{ oficio.pendientes_count ? entero.format(oficio.pendientes_count) : 'Sin pendientes' }}</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+        <nav v-if="emitidos.last_page > 1" class="paginas-emitidos" aria-label="Páginas de oficios emitidos">
+          <button type="button" class="btn-action" :disabled="cargandoEmitidos || emitidos.current_page <= 1" @click="cargarEmitidos(emitidos.current_page - 1)">Anterior</button>
+          <span>Página {{ emitidos.current_page }} de {{ emitidos.last_page }}</span>
+          <button type="button" class="btn-action" :disabled="cargandoEmitidos || !emitidos.next_page_url" @click="cargarEmitidos(emitidos.current_page + 1)">Siguiente</button>
+        </nav>
+      </template>
     </section>
 
     <!-- MODAL CONFIGURACIÓN DE PARÁMETROS, CRONOGRAMA Y ARANCEL (CPD) -->
@@ -182,63 +195,65 @@
 
     <!-- MODAL RESPONDER CPD (CU6) -->
     <div v-if="modalRespuesta && solicitudActiva" class="modal-backdrop">
-      <div class="modal-box">
+      <div class="modal-box modal-respuesta" role="dialog" aria-modal="true" aria-labelledby="titulo-respuesta-cpd">
         <div class="modal-header">
-          <h3>CU6: Resolución Técnica para {{ solicitudActiva.codigo }}</h3>
-          <button @click="modalRespuesta = false" class="btn-close"><X :size="18" /></button>
+          <h3 id="titulo-respuesta-cpd">CU6: Resolución Técnica para {{ solicitudActiva.codigo }}</h3>
+          <button type="button" @click="modalRespuesta = false" class="btn-close" aria-label="Cerrar" :disabled="loading"><X :size="18" /></button>
         </div>
         <form @submit.prevent="ejecutarRespuesta" class="modal-form">
-          <div class="form-group">
-            <label>Decisión Técnica (*):</label>
-            <select v-model="formResp.resultado" @change="cambiarResultadoGeneral" required>
-              <option value="HABILITADO">HABILITADO (Inscripción confirmada)</option>
-              <option value="OBSERVADO">OBSERVADO</option>
-              <option value="RECHAZADO">RECHAZADO</option>
-            </select>
-          </div>
-
-          <!-- Selección granular de materias habilitadas por CPD -->
-          <div v-if="solicitudActiva.grupos && solicitudActiva.grupos.length > 0" class="form-group">
-            <label>Habilitación Técnica por Asignatura (CPD habilita cupo final):</label>
-            <div class="table-responsive" tabindex="0" role="region" aria-label="Respuesta por materia">
-              <table class="data-table">
-                <thead>
-                  <tr>
-                    <th scope="col">Materia / Grupo</th>
-                    <th scope="col">Estado de Habilitación</th>
-                    <th scope="col">Observación Técnica</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  <tr v-for="sg in formRespMaterias" :key="sg.id">
-                    <td><strong>{{ sg.materia_sigla }}</strong> (Gr. {{ sg.sigla_grupo }})</td>
-                    <td>
-                      <select v-model="sg.estado" @change="verificarMateriasCpd" class="form-control-sm">
-                        <option value="HABILITADA">HABILITADA (Cupo asignado)</option>
-                        <option value="RECHAZADA_CPD">RECHAZADA (Sin cupo CPD)</option>
-                        <option value="PENDIENTE">PENDIENTE</option>
-                      </select>
-                    </td>
-                    <td>
-                      <input v-model="sg.observacion" placeholder="Detalle técnico CPD..." class="form-control-sm" />
-                    </td>
-                  </tr>
-                </tbody>
-              </table>
+          <div class="respuesta-campos">
+            <div class="form-group">
+              <label>Decisión Técnica (*):</label>
+              <select v-model="formResp.resultado" @change="cambiarResultadoGeneral" required>
+                <option value="HABILITADO">HABILITADO (Inscripción confirmada)</option>
+                <option value="OBSERVADO">OBSERVADO</option>
+                <option value="RECHAZADO">RECHAZADO</option>
+              </select>
             </div>
-            <small class="text-muted">Si todas las materias quedan rechazadas por falta de cupo, el trámite pasa a RECHAZADO automáticamente.</small>
-          </div>
-          <div class="form-group">
-            <label>Código Único de Respuesta (*):</label>
-            <input v-model="formResp.codigo_respuesta" required />
-          </div>
-          <div class="form-group">
-            <label>Observaciones Técnicas:</label>
-            <textarea v-model="formResp.observaciones" rows="3"></textarea>
+
+            <!-- Selección granular de materias habilitadas por CPD -->
+            <div v-if="solicitudActiva.grupos && solicitudActiva.grupos.length > 0" class="form-group">
+              <label>Habilitación Técnica por Asignatura (CPD habilita cupo final):</label>
+              <div class="table-responsive" tabindex="0" role="region" aria-label="Respuesta por materia">
+                <table class="data-table">
+                  <thead>
+                    <tr>
+                      <th scope="col">Materia / Grupo</th>
+                      <th scope="col">Estado de Habilitación</th>
+                      <th scope="col">Observación Técnica</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    <tr v-for="sg in formRespMaterias" :key="sg.id">
+                      <td><strong>{{ sg.materia_sigla }}</strong> (Gr. {{ sg.sigla_grupo }})</td>
+                      <td>
+                        <select v-model="sg.estado" @change="verificarMateriasCpd" class="form-control-sm">
+                          <option value="HABILITADA">HABILITADA (Cupo asignado)</option>
+                          <option value="RECHAZADA_CPD">RECHAZADA (Sin cupo CPD)</option>
+                          <option value="PENDIENTE">PENDIENTE</option>
+                        </select>
+                      </td>
+                      <td>
+                        <input v-model="sg.observacion" placeholder="Detalle técnico CPD..." class="form-control-sm" />
+                      </td>
+                    </tr>
+                  </tbody>
+                </table>
+              </div>
+              <small class="text-muted">Si todas las materias quedan rechazadas por falta de cupo, el trámite pasa a RECHAZADO automáticamente.</small>
+            </div>
+            <div class="form-group">
+              <label for="codigo-respuesta-cpd">Código Único de Respuesta (*):</label>
+              <input id="codigo-respuesta-cpd" type="text" v-model="formResp.codigo_respuesta" required />
+            </div>
+            <div class="form-group">
+              <label>Observaciones Técnicas:</label>
+              <textarea v-model="formResp.observaciones" rows="3"></textarea>
+            </div>
           </div>
           <div class="modal-footer">
-            <button type="button" @click="modalRespuesta = false" class="btn-secondary">Cancelar</button>
-            <button type="submit" class="btn-primary" :disabled="loading">Guardar Respuesta</button>
+            <button type="button" @click="modalRespuesta = false" class="btn-secondary" :disabled="loading">Cancelar</button>
+            <button type="submit" class="btn-primary" :disabled="loading">{{ loading ? 'Guardando…' : 'Confirmar resolución' }}</button>
           </div>
         </form>
       </div>
@@ -247,43 +262,54 @@
 </template>
 
 <script setup>
-import { computed, ref, onMounted, watch } from 'vue';
+import { computed, ref, onMounted } from 'vue';
 import { RefreshCw, CheckSquare, X, Calendar } from '@lucide/vue';
 import api from '../../services/api';
 
 const props = defineProps({ usuario: Object });
 const esCpd = computed(() => props.usuario?.roles?.some(rol => rol.nombre === 'CPD'));
-const pagosStripe = ref(null);
-const cargandoPagosStripe = ref(false);
-const errorPagosStripe = ref('');
-const formatoArancel = new Intl.NumberFormat('es-BO', { style: 'currency', currency: 'BOB' });
-const estadosPago = { PENDIENTE: 'Pendiente', PAGADO: 'Pagado', EXPIRADO: 'Vencido', FALLIDO: 'Fallido', CANCELADO: 'Cancelado' };
+const secciones = [
+  { id: 'pendientes', nombre: 'Pendientes' },
+  { id: 'emitidos', nombre: 'Oficios emitidos' },
+];
+const vista = ref('pendientes');
+const emitidos = ref(null);
+const cargandoEmitidos = ref(false);
+const errorEmitidos = ref('');
+const entero = new Intl.NumberFormat('es-BO');
+const fechaRemision = new Intl.DateTimeFormat('es-BO', { day: 'numeric', month: 'short', year: 'numeric' });
+const fechaOficio = (fecha) => fecha ? fechaRemision.format(new Date(fecha.slice(0, 10) + 'T12:00:00')) : '—';
+let revisionEmitidos = 0;
 
-async function cargarPagosStripe(pagina = 1) {
-  if (!esCpd.value || cargandoPagosStripe.value) return;
-  cargandoPagosStripe.value = true;
-  errorPagosStripe.value = '';
+async function cargarEmitidos(pagina = 1) {
+  const revision = ++revisionEmitidos;
+  cargandoEmitidos.value = true;
+  errorEmitidos.value = '';
   try {
-    const { data } = await api.get('/cpd/pagos-stripe', { params: { page: pagina } });
-    if (esCpd.value) pagosStripe.value = data;
+    const { data } = await api.get('/cpd/oficios-emitidos', { params: { page: pagina } });
+    if (revision === revisionEmitidos) emitidos.value = data;
   } catch {
-    errorPagosStripe.value = 'No se pudieron cargar los pagos con tarjeta.';
+    if (revision === revisionEmitidos) errorEmitidos.value = 'No se pudieron cargar los oficios. Pulsa Actualizar para reintentar.';
   } finally {
-    cargandoPagosStripe.value = false;
+    if (revision === revisionEmitidos) cargandoEmitidos.value = false;
   }
+}
+
+function seleccionarVista(seccion) {
+  vista.value = seccion;
+  if (seccion === 'emitidos' && !emitidos.value && !cargandoEmitidos.value) cargarEmitidos();
 }
 
 function actualizarPanel() {
   cargarPendientes();
-  cargarPagosStripe(pagosStripe.value?.current_page);
+  if (vista.value === 'emitidos' || emitidos.value || cargandoEmitidos.value) cargarEmitidos(emitidos.value?.current_page);
 }
 
-watch(esCpd, (permitido) => {
-  if (permitido) cargarPagosStripe();
-  else pagosStripe.value = null;
-}, { immediate: true });
-
 const oficios = ref([]);
+const cargandoPendientes = ref(false);
+const errorPendientes = ref('');
+const avisoResolucion = ref('');
+let cargaPendientes = 0;
 const periodos = ref([]);
 const periodoActivo = ref(null);
 const loading = ref(false);
@@ -306,12 +332,18 @@ const formConfig = ref({
 });
 
 const cargarPendientes = async () => {
+  const carga = ++cargaPendientes;
+  cargandoPendientes.value = true;
+  errorPendientes.value = '';
   try {
     const [resO, resP] = await Promise.all([
       api.get('/cpd/pendientes'),
       api.get('/catalogos/periodos')
     ]);
-    oficios.value = resO.data;
+    if (carga !== cargaPendientes) return;
+    oficios.value = resO.data
+      .map(oficio => ({ ...oficio, solicitudes: oficio.solicitudes.filter(sol => sol.estado === 'REMITIDA_A_CPD') }))
+      .filter(oficio => oficio.solicitudes.length);
     periodos.value = resP.data;
     if (periodos.value.length) {
       periodoActivo.value = periodos.value[0];
@@ -325,8 +357,10 @@ const cargarPendientes = async () => {
       formConfig.value.fecha_inicio_ejecucion = periodoActivo.value.fecha_inicio_ejecucion || '';
       formConfig.value.fecha_fin_ejecucion = periodoActivo.value.fecha_fin_ejecucion || '';
     }
-  } catch (e) {
-    console.error(e);
+  } catch {
+    if (carga === cargaPendientes) errorPendientes.value = 'No se pudo cargar la bandeja. Pulsa Actualizar para reintentar.';
+  } finally {
+    if (carga === cargaPendientes) cargandoPendientes.value = false;
   }
 };
 
@@ -348,8 +382,10 @@ const guardarConfigPeriodo = async () => {
 };
 
 const abrirRespuesta = (oficio, sol) => {
+  if (sol.estado !== 'REMITIDA_A_CPD' || loading.value) return;
   oficioActivo.value = oficio;
   solicitudActiva.value = sol;
+  formResp.value.resultado = 'HABILITADO';
   formResp.value.codigo_respuesta = `CPD-RES-${Date.now().toString().slice(-6)}`;
   formResp.value.observaciones = '';
   formRespMaterias.value = (sol.grupos || []).map(sg => ({
@@ -385,11 +421,28 @@ const cambiarResultadoGeneral = () => {
   }
 };
 
+const retirarDePendientes = (id) => {
+  cargaPendientes++;
+  oficios.value = oficios.value
+    .map(oficio => ({ ...oficio, solicitudes: oficio.solicitudes.filter(sol => sol.id !== id) }))
+    .filter(oficio => oficio.solicitudes.length);
+  modalRespuesta.value = false;
+  actualizarPanel();
+};
+
+const estadosResolucion = {
+  HABILITADA: 'Habilitada',
+  OBSERVADA_CPD: 'Observada por CPD',
+  RECHAZADA_CPD: 'Rechazada por CPD',
+};
+
 const ejecutarRespuesta = async () => {
+  if (loading.value) return;
+  const solicitud = solicitudActiva.value;
   verificarMateriasCpd();
   loading.value = true;
   try {
-    await api.post('/cpd/responder', {
+    const { data } = await api.post('/cpd/responder', {
       id_oficio: oficioActivo.value.id,
       id_solicitud: solicitudActiva.value.id,
       resultado: formResp.value.resultado,
@@ -401,20 +454,67 @@ const ejecutarRespuesta = async () => {
         observacion: m.observacion
       }))
     });
-    modalRespuesta.value = false;
-    alert('Respuesta CPD procesada. Estudiante y Dirección notificados.');
-    cargarPendientes();
+    const estado = estadosResolucion[data.solicitud?.estado];
+    avisoResolucion.value = estado
+      ? `${solicitud.codigo} · ${estado}. Resolución guardada.`
+      : `${solicitud.codigo} · Resolución guardada.`;
+    retirarDePendientes(solicitud.id);
   } catch (e) {
-    alert(e.response?.data?.error || 'Error al procesar respuesta CPD.');
+    if (e.response?.data?.codigo === 'SOLICITUD_NO_PENDIENTE') {
+      const estado = estadosResolucion[e.response.data.estado];
+      avisoResolucion.value = estado
+        ? `${solicitud.codigo} · ${estado}. La bandeja se actualizó.`
+        : `${solicitud.codigo} ya no está pendiente de resolución.`;
+      retirarDePendientes(solicitud.id);
+    } else {
+      alert(e.response?.data?.error || e.response?.data?.message || 'Error al procesar respuesta CPD.');
+    }
   } finally {
     loading.value = false;
   }
 };
 
-onMounted(cargarPendientes);
+onMounted(actualizarPanel);
 </script>
 
 <style scoped>
+.secciones-cpd,
+.paginas-emitidos {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: .5rem;
+}
+
+.secciones-cpd {
+  margin-bottom: 1rem;
+}
+
+.secciones-cpd [aria-pressed="true"] {
+  background: var(--primary-subtle);
+  border-color: var(--primary-text);
+  color: var(--text);
+  font-weight: 700;
+}
+
+:global([data-contrast="high"]) .secciones-cpd [aria-pressed="true"] {
+  background: var(--text);
+  color: var(--surface);
+  border-color: var(--text);
+}
+
+.referencia-emitido {
+  display: block;
+  color: var(--text-muted);
+  font-size: .875rem;
+  font-weight: 400;
+}
+
+.paginas-emitidos {
+  justify-content: flex-end;
+  margin-top: .75rem;
+}
+
 .role-view {
   background: var(--surface);
   border-radius: var(--radius-xl);
@@ -494,6 +594,44 @@ onMounted(cargarPendientes);
   flex-direction: column;
   max-height: 90vh;
 }
+
+.modal-box.modal-respuesta {
+  max-width: 44rem;
+  max-height: calc(100dvh - 2rem);
+  padding: clamp(.75rem, 3vw, 1.5rem);
+}
+
+.modal-respuesta .modal-header,
+.modal-respuesta .modal-footer {
+  flex-shrink: 0;
+}
+
+.modal-respuesta .modal-form {
+  display: flex;
+  flex-direction: column;
+  flex: 1 1 auto;
+  min-height: 0;
+  min-width: 0;
+}
+
+.respuesta-campos {
+  min-height: 0;
+  overflow: auto;
+  overscroll-behavior: contain;
+  padding: .125rem .25rem;
+}
+
+.modal-respuesta .table-responsive select,
+.modal-respuesta .table-responsive input {
+  min-width: 8rem;
+}
+
+.modal-respuesta .modal-footer {
+  flex-wrap: wrap;
+  margin-top: .5rem;
+  padding-top: .75rem;
+}
+
 .modal-box.modal-lg {
   max-width: 680px;
 }

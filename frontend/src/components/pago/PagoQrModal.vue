@@ -1,122 +1,110 @@
 <template>
-  <div v-if="visible" class="modal-backdrop">
-    <div class="modal-box modal-qr">
-      <div class="modal-header">
-        <div class="title-with-icon">
-          <QrCode :size="20" class="header-icon" />
-          <div>
-            <h3>Pago de Arancel por QR - PagoFácil</h3>
-            <span class="sub-code">Trámite Caso Especial: {{ solicitud?.codigo }}</span>
-          </div>
+  <dialog ref="dialogo" class="modal-box payment-dialog modal-qr" aria-labelledby="titulo-pago-qr" @cancel.prevent="cerrar">
+      <header>
+      <div class="title-with-icon">
+        <QrCode :size="20" class="header-icon" />
+        <div>
+          <h3 id="titulo-pago-qr">Pagar con QR</h3>
+          <small>{{ solicitud?.codigo }}</small>
         </div>
-        <button @click="cerrar" class="btn-close" :disabled="procesando">
-          <X :size="18" />
-        </button>
+      </div>
+      <button type="button" @click="cerrar" class="btn-action" aria-label="Cerrar pago QR" :disabled="procesando">
+        <X :size="18" aria-hidden="true" />
+      </button>
+    </header>
+
+    <div class="modal-body-pago">
+      <p v-if="pagoActual?.estado !== 'PAGADO' && monto != null" class="monto-qr">
+        Arancel <strong>{{ monto }} Bs</strong>
+      </p>
+
+      <!-- Indicador de Carga al generar QR -->
+      <div v-if="cargando" class="loading-state" role="status">
+        <Loader2 :size="36" class="spin-icon" />
+        <p>Conectando con la pasarela PagoFácil QR...</p>
       </div>
 
-      <div class="modal-body-pago">
-        <!-- Banner Informativo -->
-        <div class="pago-banner">
-          <div v-if="pagoActual?.monto != null || solicitud?.periodo?.costo_arancel_caso != null" class="banner-amount">
-            <span class="currency">BOB</span>
-            <span class="amount">{{ pagoActual?.monto ?? solicitud?.periodo?.costo_arancel_caso }}</span>
-          </div>
-          <div class="banner-desc">
-            <strong>Arancel Académico - FICCT UAGRM</strong>
-            <p>Habilita la remisión de tu caso a Centro de Procesamiento de Datos (CPD).</p>
-          </div>
-        </div>
-
-        <!-- Indicador de Carga al generar QR -->
-        <div v-if="cargando" class="loading-state">
-          <Loader2 :size="36" class="spin-icon" />
-          <p>Conectando con la pasarela PagoFácil QR...</p>
-        </div>
-
-        <!-- Pantalla de QR Generado -->
-        <div v-else-if="pagoActual && pagoActual.estado !== 'PAGADO'" class="qr-content-wrapper">
-          <div class="qr-box">
-            <img 
-              v-if="pagoActual.qr_base64" 
-              :src="getQrImageSrc(pagoActual.qr_base64)" 
-              alt="Código QR de PagoFácil"
-              class="qr-img" 
-            />
-            <div v-else class="qr-placeholder">
-              <QrCode :size="80" class="text-muted" />
-              <span>Código QR no disponible</span>
-            </div>
-            
-            <div v-if="modoSandbox" class="sandbox-tag">
-              <Sparkles :size="12" /> Modo Simulación / Sandbox Activo
-            </div>
+      <!-- Pantalla de QR Generado -->
+      <div v-else-if="pagoActual && pagoActual.estado !== 'PAGADO'" class="qr-content-wrapper">
+        <div class="qr-box">
+          <img
+            v-if="pagoActual.qr_base64"
+            :src="getQrImageSrc(pagoActual.qr_base64)"
+            alt="Código QR de PagoFácil"
+            class="qr-img"
+          />
+          <div v-else class="qr-placeholder">
+            <QrCode :size="80" class="text-muted" />
+            <span>Código QR no disponible</span>
           </div>
 
-          <div class="qr-instructions">
-            <ol class="steps-list">
-              <li>Abre tu aplicación bancaria móvil (Banco Unión, BCP, BNB, etc.).</li>
-              <li>Selecciona la opción <strong>Simple / Cobro QR</strong>.</li>
-              <li>Apunta la cámara de tu celular y confirma el monto.</li>
-            </ol>
-            
-            <div class="meta-info">
-              <div><strong>Código de Pago:</strong> <code>{{ pagoActual.numero_pago }}</code></div>
-              <div v-if="pagoActual.fecha_expiracion">
-                <strong>Vence:</strong> {{ formatearFecha(pagoActual.fecha_expiracion) }}
-              </div>
-            </div>
-
-            <!-- Botones de Acción -->
-            <div class="qr-actions">
-              <button @click="verificarEstado" class="btn-primary btn-check" :disabled="verificando">
-                <RefreshCw :size="16" :class="{ 'spin-icon': verificando }" />
-                {{ verificando ? 'Comprobando pago...' : 'Verificar Pago' }}
-              </button>
-
-              <button 
-                v-if="modoSandbox" 
-                @click="simularPago" 
-                class="btn-demo" 
-                :disabled="procesando"
-                title="Simula un pago exitoso instantáneo para pruebas de desarrollo"
-              >
-                <CheckCircle2 :size="15" /> Simular Pago Exitoso (Demo)
-              </button>
-            </div>
+          <div v-if="modoSandbox" class="sandbox-tag">
+            <Sparkles :size="12" /> Modo Simulación / Sandbox Activo
           </div>
         </div>
 
-        <!-- Estado de Pago Confirmado -->
-        <div v-else-if="pagoActual && pagoActual.estado === 'PAGADO'" class="success-state">
-          <CheckCircle2 :size="50" class="text-success" />
-          <h4>¡Pago Confirmado Exitosamente!</h4>
-          <p>Tu arancel está pagado. Puedes consultar el estado actualizado de tu caso en la lista de solicitudes.</p>
-          <div class="receipt-box">
-            <div><strong>Referencia:</strong> {{ pagoActual.numero_pago }}</div>
-            <div><strong>Monto:</strong> {{ pagoActual.monto }} BOB</div>
-            <div><strong>Fecha:</strong> {{ formatearFecha(pagoActual.fecha_pago) }}</div>
-          </div>
-          <button @click="finalizar" class="btn-primary mt-3">Finalizar y Continuar</button>
-        </div>
+        <div class="qr-instructions">
+          <p class="paso-qr">Escanea el código con tu aplicación bancaria y confirma el importe.</p>
 
-        <!-- Estado de Error al generar -->
-        <div v-else-if="errorMensaje" class="error-state">
-          <AlertCircle :size="40" class="text-danger" />
-          <p class="text-danger font-bold">{{ errorMensaje }}</p>
-          <button v-if="stripePendiente" @click="generarCobro(true)" class="btn-secondary mt-2">Cerrar Stripe y generar QR</button>
-          <button v-else @click="generarCobro()" class="btn-secondary mt-2">Reintentar generar QR</button>
+          <div class="meta-info">
+            <div><strong>Código de Pago:</strong> <code>{{ pagoActual.numero_pago }}</code></div>
+            <div v-if="pagoActual.fecha_expiracion">
+              <strong>Vence:</strong> {{ formatearFecha(pagoActual.fecha_expiracion) }}
+            </div>
+          </div>
+
+          <!-- Botones de Acción -->
+          <div class="qr-actions">
+            <button @click="verificarEstado" class="btn-primary btn-check" :disabled="verificando">
+              <RefreshCw :size="16" :class="{ 'spin-icon': verificando }" />
+              {{ verificando ? 'Comprobando…' : 'Verificar pago' }}
+            </button>
+
+            <button
+              v-if="modoSandbox"
+              @click="simularPago"
+              class="btn-demo"
+              :disabled="procesando"
+              title="Simula un pago exitoso instantáneo para pruebas de desarrollo"
+            >
+              <CheckCircle2 :size="15" /> Simular Pago Exitoso (Demo)
+            </button>
+          </div>
+          <p v-if="errorVerificacion" class="paso-qr" role="status">{{ errorVerificacion }}</p>
         </div>
       </div>
 
-      <div class="modal-footer">
-        <button type="button" @click="cerrar" class="btn-secondary" :disabled="procesando">Cerrar</button>
+      <!-- Estado de Pago Confirmado -->
+      <div v-else-if="pagoActual && pagoActual.estado === 'PAGADO'" class="success-state">
+        <CheckCircle2 :size="50" class="text-success" />
+        <h4>¡Pago Confirmado Exitosamente!</h4>
+        <p>Tu arancel está pagado. Puedes consultar el estado actualizado de tu caso en la lista de solicitudes.</p>
+        <div class="receipt-box">
+          <div><strong>Referencia:</strong> {{ pagoActual.numero_pago }}</div>
+          <div><strong>Monto:</strong> {{ pagoActual.monto }} BOB</div>
+          <div><strong>Fecha:</strong> {{ formatearFecha(pagoActual.fecha_pago) }}</div>
+        </div>
+      </div>
+
+      <!-- Estado de Error al generar -->
+      <div v-else-if="errorMensaje" class="error-state" role="status">
+        <AlertCircle :size="40" class="text-danger" />
+        <p class="text-danger font-bold">{{ errorMensaje }}</p>
+        <button v-if="stripePendiente" @click="generarCobro(true)" class="btn-secondary mt-2">Cerrar Stripe y generar QR</button>
+        <button v-else @click="generarCobro()" class="btn-secondary mt-2">Reintentar generar QR</button>
       </div>
     </div>
-  </div>
+
+    <footer>
+      <button type="button" @click="cerrar" class="btn-secondary" :disabled="procesando">
+        {{ pagoActual?.estado === 'PAGADO' ? 'Listo' : 'Volver a métodos de pago' }}
+      </button>
+    </footer>
+  </dialog>
 </template>
 
 <script setup>
-import { ref, watch, onUnmounted } from 'vue';
+import { computed, ref, watch, onUnmounted } from 'vue';
 import { 
   QrCode, 
   X, 
@@ -134,15 +122,19 @@ const props = defineProps({
 });
 
 const emit = defineEmits(['close', 'pago-completado']);
+const dialogo = ref(null);
 
 const cargando = ref(false);
 const verificando = ref(false);
 const procesando = ref(false);
 const errorMensaje = ref('');
+const errorVerificacion = ref('');
 const stripePendiente = ref(false);
 const pagoActual = ref(null);
 const modoSandbox = ref(false);
+const monto = computed(() => pagoActual.value?.monto ?? props.solicitud?.periodo?.costo_arancel_caso);
 let intervaloPolling = null;
+let consultas;
 
 const getQrImageSrc = (base64Str) => {
   if (!base64Str) return '';
@@ -163,14 +155,17 @@ const formatearFecha = (f) => {
 };
 
 const generarCobro = async (cerrarStripe = false) => {
-  if (!props.solicitud) return;
+  if (!props.solicitud || !consultas) return;
+  const { signal } = consultas;
   cargando.value = true;
   errorMensaje.value = '';
+  errorVerificacion.value = '';
   stripePendiente.value = false;
   pagoActual.value = null;
   
   try {
-    const res = await api.post(`/solicitudes/${props.solicitud.id}/pagar-qr`, { cerrar_stripe: cerrarStripe });
+    const res = await api.post(`/solicitudes/${props.solicitud.id}/pagar-qr`, { cerrar_stripe: cerrarStripe }, { signal, timeout: 30000 });
+    if (signal.aborted) return;
     pagoActual.value = res.data.pago;
     modoSandbox.value = !!res.data.modo_sandbox;
 
@@ -181,18 +176,22 @@ const generarCobro = async (cerrarStripe = false) => {
       iniciarPolling();
     }
   } catch (e) {
+    if (signal.aborted) return;
     stripePendiente.value = e.response?.data?.codigo === 'STRIPE_PENDIENTE';
     errorMensaje.value = e.response?.data?.error || e.response?.data?.message || 'Error al conectar con PagoFácil QR.';
   } finally {
-    cargando.value = false;
+    if (!signal.aborted) cargando.value = false;
   }
 };
 
 const verificarEstado = async () => {
-  if (!pagoActual.value?.id || verificando.value) return;
+  if (!pagoActual.value?.id || verificando.value || !consultas) return;
+  const { signal } = consultas;
   verificando.value = true;
   try {
-    const res = await api.get(`/pagos/${pagoActual.value.id}/consultar`);
+    const res = await api.get(`/pagos/${pagoActual.value.id}/consultar`, { signal, timeout: 10000 });
+    if (signal.aborted) return;
+    errorVerificacion.value = '';
     pagoActual.value = res.data.pago;
     if (res.data.estado === 'PAGADO') {
       detenerPolling();
@@ -203,22 +202,24 @@ const verificarEstado = async () => {
       errorMensaje.value = 'El QR venció. Puedes generar otro o cerrar esta ventana para elegir Stripe.';
     }
   } catch (e) {
-    console.error('Error al verificar estado de pago:', e);
+    if (!signal.aborted) errorVerificacion.value = e.response?.data?.error || 'No se pudo verificar el pago. Inténtalo de nuevo.';
   } finally {
-    verificando.value = false;
+    if (!signal.aborted) verificando.value = false;
   }
 };
 
 const simularPago = async () => {
-  if (!pagoActual.value?.id) return;
+  if (!pagoActual.value?.id || !consultas) return;
+  const { signal } = consultas;
   procesando.value = true;
   try {
-    const res = await api.post(`/pagos/${pagoActual.value.id}/simular`);
+    const res = await api.post(`/pagos/${pagoActual.value.id}/simular`, {}, { signal, timeout: 10000 });
+    if (signal.aborted) return;
     pagoActual.value = res.data.pago;
     detenerPolling();
     emit('pago-completado', pagoActual.value);
   } catch (e) {
-    alert(e.response?.data?.error || 'Error al simular pago.');
+    if (!signal.aborted) errorVerificacion.value = e.response?.data?.error || 'No se pudo simular el pago.';
   } finally {
     procesando.value = false;
   }
@@ -243,33 +244,45 @@ const detenerPolling = () => {
 };
 
 const cerrar = () => {
-  detenerPolling();
-  emit('close');
+  if (!procesando.value) emit('close', pagoActual.value?.estado !== 'PAGADO');
 };
 
-const finalizar = () => {
-  detenerPolling();
-  emit('pago-completado', pagoActual.value);
-  emit('close');
-};
-
-watch(() => props.visible, (val) => {
-  if (val) {
+watch(() => props.visible, (visible) => {
+  if (visible) {
+    consultas = new AbortController();
+    verificando.value = false;
+    dialogo.value.showModal();
     generarCobro();
   } else {
+    consultas?.abort();
+    dialogo.value.close();
     detenerPolling();
   }
 });
 
 onUnmounted(() => {
+  consultas?.abort();
   detenerPolling();
 });
 </script>
 
 <style scoped>
 .modal-qr {
-  max-width: 520px;
-  width: 95%;
+  overflow: hidden;
+}
+
+.modal-qr[open] {
+  display: flex;
+  flex-direction: column;
+}
+
+.modal-qr > :is(header, footer) {
+  flex-shrink: 0;
+}
+
+.modal-qr > footer {
+  justify-content: flex-end;
+  border-top: 1px solid var(--border);
 }
 
 .title-with-icon {
@@ -280,56 +293,27 @@ onUnmounted(() => {
 .header-icon {
   color: var(--primary);
 }
-.sub-code {
-  font-size: 0.78rem;
-  color: var(--text-muted);
-  display: block;
-}
-
 .modal-body-pago {
-  padding: 1.2rem 1.4rem;
+  min-height: 0;
+  overflow-y: auto;
+  overflow-wrap: anywhere;
+  overscroll-behavior: contain;
+  padding: .75rem 1rem;
 }
 
-.pago-banner {
-  background: var(--surface-alt);
-  border: 1px solid var(--border);
-  border-radius: var(--radius-sm, 8px);
-  padding: 0.85rem 1rem;
-  display: flex;
-  align-items: center;
-  gap: 1.2rem;
-  margin-bottom: 1.2rem;
-}
-.banner-amount {
-  display: flex;
-  align-items: baseline;
-  gap: 0.25rem;
-  background: var(--primary);
-  color: var(--on-primary);
-  padding: 0.4rem 0.8rem;
-  border-radius: 6px;
-  font-weight: 900;
-}
-.currency {
-  font-size: 0.75rem;
-  opacity: 0.9;
-}
-.amount {
-  font-size: 1.3rem;
-}
-.banner-desc strong {
-  font-size: 0.9rem;
-  display: block;
-}
-.banner-desc p {
-  margin: 0.2rem 0 0;
-  font-size: 0.78rem;
+.monto-qr {
+  margin: 0 0 .625rem;
+  text-align: center;
   color: var(--text-muted);
+}
+
+.monto-qr strong {
+  color: var(--text);
 }
 
 .loading-state, .error-state, .success-state {
   text-align: center;
-  padding: 2rem 1rem;
+  padding: .75rem 0;
   display: flex;
   flex-direction: column;
   align-items: center;
@@ -347,22 +331,24 @@ onUnmounted(() => {
   display: flex;
   flex-direction: column;
   align-items: center;
-  gap: 1rem;
+  gap: .625rem;
 }
 
 .qr-box {
   background: #ffffff;
-  padding: 0.8rem;
+  padding: .5rem;
+  max-width: 100%;
   border-radius: 12px;
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
   display: flex;
   flex-direction: column;
   align-items: center;
   border: 1px solid #e2e8f0;
 }
 .qr-img {
-  width: 220px;
-  height: 220px;
+  width: clamp(9rem, 33dvh, 12rem);
+  max-width: 100%;
+  height: auto;
+  aspect-ratio: 1;
   object-fit: contain;
 }
 
@@ -382,15 +368,17 @@ onUnmounted(() => {
 .qr-instructions {
   width: 100%;
 }
-.steps-list {
-  padding-left: 1.2rem;
-  font-size: 0.84rem;
-  color: var(--text);
-  margin-bottom: 0.8rem;
-  line-height: 1.4;
+.paso-qr {
+  margin: 0 0 .625rem;
+  font-size: .875rem;
+  text-align: center;
+  color: var(--text-muted);
 }
-.steps-list li {
-  margin-bottom: 0.3rem;
+
+.loading-state p,
+.error-state p,
+.success-state :is(h4, p) {
+  margin: 0;
 }
 
 .meta-info {
@@ -399,7 +387,7 @@ onUnmounted(() => {
   padding: 0.6rem 0.8rem;
   border-radius: 6px;
   font-size: 0.8rem;
-  margin-bottom: 1rem;
+  margin-bottom: .625rem;
   display: flex;
   justify-content: space-between;
   flex-wrap: wrap;
@@ -422,8 +410,8 @@ onUnmounted(() => {
 }
 .btn-demo {
   background: var(--surface);
-  border: 1px solid var(--accent, #8b5cf6);
-  color: var(--accent, #8b5cf6);
+  border: 1px solid var(--border);
+  color: var(--text);
   padding: 0.5rem;
   border-radius: var(--radius-sm, 6px);
   font-size: 0.82rem;
@@ -436,8 +424,7 @@ onUnmounted(() => {
   transition: all 0.2s;
 }
 .btn-demo:hover {
-  background: var(--accent, #8b5cf6);
-  color: #ffffff;
+  background: var(--surface-alt);
 }
 
 .receipt-box {

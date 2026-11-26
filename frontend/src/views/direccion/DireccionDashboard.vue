@@ -95,7 +95,7 @@
               <td>{{ formatearFecha(sol.fecha_solicitud) }}</td>
               <td>
                 <div class="actions-cell">
-                  <button @click="verDetalle(sol)" class="btn-action">
+                  <button type="button" @click="expediente.abrir(sol)" class="btn-action">
                     <FileSearch :size="14" class="inline-icon" /> Expediente
                   </button>
                   <button v-if="sol.estado === 'ENVIADA' || sol.estado === 'OBSERVADA' || sol.estado === 'SUBSANADA'" @click="abrirEvaluar(sol)" class="btn-action btn-eval">
@@ -293,6 +293,8 @@
     </div>
 
     <!-- MODAL EVALUAR (CU3) -->
+    <ExpedienteSolicitudDialog ref="expediente" />
+
     <div v-if="modalEvaluar && solicitudActiva" class="modal-backdrop">
       <div class="modal-box modal-lg">
         <div class="modal-header">
@@ -502,6 +504,7 @@ import {
   Plus, 
   X 
 } from '@lucide/vue';
+import ExpedienteSolicitudDialog from '../../components/common/ExpedienteSolicitudDialog.vue';
 import api from '../../services/api';
 import EtapasCronograma from '../../components/common/EtapasCronograma.vue';
 
@@ -523,6 +526,7 @@ const validandoPago = ref(false);
 
 const modalEstudiante = ref(false);
 const modalEvaluar = ref(false);
+const expediente = ref(null);
 const modalReserva = ref(false);
 const modalAmpliarCupos = ref(false);
 const modalOficio = ref(false);

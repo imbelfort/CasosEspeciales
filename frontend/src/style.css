@@ -474,6 +474,41 @@ textarea:focus {
   box-shadow: 0 8px 24px rgba(0, 0, 0, 0.15);
 }
 
+dialog.modal-box.payment-dialog {
+  width: min(30rem, calc(100vw - 1.5rem));
+  max-width: none;
+  max-height: calc(100dvh - 1.5rem);
+  margin: auto;
+  padding: 0;
+  color: var(--text);
+  overscroll-behavior: contain;
+}
+
+.payment-dialog::backdrop {
+  background: rgb(10 19 23 / 65%);
+}
+
+.payment-dialog > :is(header, footer) {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: .5rem;
+  padding: .75rem 1rem;
+}
+
+.payment-dialog > header {
+  border-bottom: 1px solid var(--border);
+}
+
+.payment-dialog > header h3 {
+  margin: 0;
+  font-size: 1rem;
+}
+
+.payment-dialog > header small {
+  color: var(--text-muted);
+}
+
 /* Iconos de Lucide */
 .inline-icon {
   display: inline-block;

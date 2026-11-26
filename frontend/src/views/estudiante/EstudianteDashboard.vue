@@ -1,7 +1,12 @@
 <template>
   <div class="role-view">
-    <!-- WIDGET DE ETAPAS DINÁMICAS PRO (En Curso / Próxima / Concluida) -->
-    <EtapasCronograma :periodo="periodoActivo" />
+    <section v-if="nombreAlumno" class="bienvenida-alumno" aria-labelledby="saludo-alumno">
+      <h1 id="saludo-alumno">Hola, {{ nombreAlumno }}</h1>
+      <p v-if="props.usuario?.estudiante?.registro_universitario">
+        Registro universitario <strong>{{ props.usuario.estudiante.registro_universitario }}</strong>
+      </p>
+    </section>
+    <EtapasCronograma :periodo="periodoActivo" compacto />
 
     <!-- BARRA RESUMEN LIMPIA CON ACCIONES PRINCIPALES -->
     <div class="view-header">
@@ -40,8 +45,19 @@
 
     <p v-if="estadoStripe" class="banner-aviso-warn" role="status">{{ estadoStripe }}</p>
 
+    <div class="actualizacion-solicitudes">
+      <button type="button" class="btn-action" :disabled="actualizandoSolicitudes || pausaActualizacion"
+        @click="actualizarSolicitudes()">
+        <RefreshCw :size="15" aria-hidden="true" />
+        {{ actualizandoSolicitudes ? 'Actualizando…' : 'Actualizar' }}
+      </button>
+      <p v-if="errorSolicitudes" role="status">{{ errorSolicitudes }}</p>
+      <p v-else-if="ultimaActualizacion">Actualizado a las {{ ultimaActualizacion }}</p>
+    </div>
+
     <!-- BANDEJA DE MIS CASOS -->
-    <div class="table-responsive" tabindex="0" role="region" aria-label="Solicitudes de casos especiales">
+    <div class="table-responsive" tabindex="0" role="region" aria-label="Solicitudes de casos especiales"
+      :aria-busy="actualizandoSolicitudes">
       <table class="data-table">
         <thead>
           <tr>
@@ -81,24 +97,14 @@
                   <span v-if="sol.archivos?.some(a => a.tipo_archivo === 'BOLETA_PENDIENTE')">
                     Boleta en revisión por Dirección
                   </span>
-                  <div v-else class="pay-actions-group" role="group" aria-label="Método de pago del arancel">
-                    <button type="button" :disabled="stripeAbriendo !== null" @click="abrirPagoQr(sol)" class="btn-action btn-pay-qr">
-                      <QrCode :size="16" aria-hidden="true" /> Pagar con QR
-                    </button>
-                    <button v-if="stripeDisponible" type="button" class="btn-action btn-stripe"
-                      :disabled="stripeAbriendo !== null" @click="pagarConTarjeta(sol)">
-                      <img :src="logoStripe" alt="Stripe" />
-                      {{ stripeAbriendo === sol.id ? 'Abriendo…' : 'Tarjeta' }}
-                    </button>
-                    <button type="button" :disabled="stripeAbriendo !== null" @click="abrirPago(sol)" class="btn-action btn-pay">
-                      <UploadCloud :size="14" class="inline-icon" /> Enviar boleta
-                    </button>
-                  </div>
+                  <button v-else type="button" @click="elegirPago(sol)" class="btn-primary">
+                    <Wallet :size="16" aria-hidden="true" /> Pagar
+                  </button>
                 </template>
               </div>
             </td>
           </tr>
-          <tr v-if="solicitudes.length === 0">
+          <tr v-if="ultimaActualizacion && solicitudes.length === 0">
             <td colspan="6" class="no-records">No tienes casos especiales solicitados. Haz clic en 'Registrar Nueva Solicitud'.</td>
           </tr>
         </tbody>
@@ -254,6 +260,39 @@
       </div>
     </div>
 
+    <dialog ref="selectorPago" class="modal-box payment-dialog selector-pago" aria-labelledby="titulo-selector-pago"
+      @cancel="stripeAbriendo !== null && $event.preventDefault()">
+      <header>
+        <div>
+          <h3 id="titulo-selector-pago">Elige cómo pagar</h3>
+          <small>{{ solicitudActiva?.codigo }}</small>
+        </div>
+        <form method="dialog">
+          <button type="submit" class="btn-action" aria-label="Cerrar selector" :disabled="stripeAbriendo !== null">
+            <X :size="18" aria-hidden="true" />
+          </button>
+        </form>
+      </header>
+      <div class="opciones-pago">
+        <button type="button" class="btn-action opcion-pago" :disabled="stripeAbriendo !== null" @click="abrirPagoQr">
+          <span class="marca-pago"><QrCode :size="24" aria-hidden="true" /></span>
+          <span><strong>QR bancario</strong><small>Escanea con tu aplicación bancaria</small></span>
+        </button>
+        <button type="button" class="btn-action opcion-pago" :disabled="stripeDisponible !== true || stripeAbriendo !== null"
+          @click="pagarConTarjeta(solicitudActiva)">
+          <span class="marca-pago"><img :src="logoStripe" alt="Stripe" /></span>
+          <span><strong>Tarjeta</strong><small>{{ etiquetaStripe }}</small></span>
+        </button>
+        <p v-if="errorStripe" role="status">{{ errorStripe }}</p>
+        <button v-if="stripeDisponible === 'error'" type="button" class="btn-action" @click="consultarStripe">
+          Revisar disponibilidad de Stripe
+        </button>
+        <button type="button" class="btn-action opcion-boleta" :disabled="stripeAbriendo !== null" @click="abrirPago">
+          <UploadCloud :size="16" aria-hidden="true" /> Ya pagué por depósito · Enviar boleta
+        </button>
+      </div>
+    </dialog>
+
     <!-- MODAL PAGO DEL ARANCEL (CU5) -->
     <div v-if="modalPago" class="modal-backdrop">
       <div class="modal-box">
@@ -283,95 +322,12 @@
     <PagoQrModal 
       :visible="modalPagoQr" 
       :solicitud="solicitudActiva" 
-      @close="modalPagoQr = false" 
+      @close="cerrarPagoQr"
       @pago-completado="onPagoQrCompletado" 
     />
 
-    <!-- MODAL DETALLE / EXPEDIENTE COMPLETO (CU7) -->
-    <div v-if="modalDetalle && solicitudActiva" class="modal-backdrop">
-      <div class="modal-box modal-lg">
-        <div class="modal-header">
-          <h3>Expediente del Caso {{ solicitudActiva.codigo }}</h3>
-          <button @click="modalDetalle = false" class="btn-close">
-            <X :size="18" />
-          </button>
-        </div>
-        <div class="modal-body-scroll">
-          <div class="expediente-meta">
-            <div><strong>Tipo de Caso:</strong> {{ solicitudActiva.tipo_caso }}</div>
-            <div><strong>Estado:</strong> <span :class="['status-badge', solicitudActiva.estado]">{{ solicitudActiva.estado }}</span></div>
-            <div><strong>Fecha Envío:</strong> {{ formatearFecha(solicitudActiva.fecha_solicitud) }}</div>
-          </div>
-          <div class="box-note mt-3">
-            <strong>Motivo del Estudiante:</strong>
-            <p>{{ solicitudActiva.motivo }}</p>
-          </div>
+    <ExpedienteSolicitudDialog ref="expediente" estudiante />
 
-          <div v-if="solicitudActiva.evaluacion" class="box-note-eval mt-3">
-            <strong>Resolución de Dirección:</strong> {{ solicitudActiva.evaluacion.decision }}<br>
-            <span v-if="solicitudActiva.evaluacion.justificacion"><strong>Justificación:</strong> {{ solicitudActiva.evaluacion.justificacion }}</span>
-            <span v-if="solicitudActiva.motivo_rechazo" class="text-danger"><br><strong>Motivo de Rechazo:</strong> {{ solicitudActiva.motivo_rechazo }}</span>
-          </div>
-
-          <h4 class="mt-4">Materias, Grupos y Horarios Asignados</h4>
-          <ul class="clean-list">
-            <li v-for="sg in solicitudActiva.grupos" :key="sg.id" style="margin-bottom: 0.5rem;">
-              <BookOpen :size="15" class="inline-icon text-primary" />
-              <strong>{{ sg.grupo?.materia?.sigla }}</strong> - {{ sg.grupo?.materia?.nombre }} 
-              <span class="code-tag" style="margin-left: 0.4rem;">Grupo {{ sg.grupo?.sigla_grupo }}</span>
-              <div v-if="sg.grupo?.horarios && sg.grupo.horarios.length > 0" class="text-muted text-sm" style="margin-left: 1.5rem; font-size: 0.8rem;">
-                <Clock :size="12" class="inline-icon" /> 
-                <span v-for="(h, hi) in sg.grupo.horarios" :key="hi" style="margin-right: 0.6rem;">
-                  {{ h.dia }} {{ h.hora_inicio?.substring(0, 5) }}-{{ h.hora_fin?.substring(0, 5) }} (Aula {{ h.aula }})
-                </span>
-              </div>
-            </li>
-            <li v-if="!solicitudActiva.grupos || solicitudActiva.grupos.length === 0" class="text-muted">
-              No se han vinculado materias aún a este caso.
-            </li>
-          </ul>
-
-          <h4 class="mt-4">Archivos y Comprobantes</h4>
-          <ul class="clean-list">
-            <li v-for="arc in solicitudActiva.archivos" :key="arc.id">
-              <FolderArchive :size="15" class="inline-icon text-info" />
-              <strong>{{ arc.tipo_archivo }}:</strong> {{ arc.nombre_archivo }} ({{ formatearFecha(arc.fecha_subida) }})
-            </li>
-            <li v-if="!solicitudActiva.archivos || solicitudActiva.archivos.length === 0" class="text-muted">
-              Sin archivos adjuntos.
-            </li>
-          </ul>
-
-          <h4 class="mt-4">Línea de Tiempo y Auditoría Transaccional (CU7)</h4>
-          <div class="timeline">
-            <div v-for="h in solicitudActiva.historial" :key="h.id" class="timeline-item">
-              <span class="timeline-dot"></span>
-              <div class="timeline-content">
-                <strong>{{ h.accion }}</strong>: <span class="badge-sm">{{ h.estado_anterior || 'INICIO' }}</span> <ArrowRight :size="12" class="inline-icon" /> <span class="badge-sm">{{ h.estado_nuevo }}</span>
-                <p class="timeline-obs">{{ h.observacion }}</p>
-                <small class="text-muted">{{ formatearFecha(h.fecha_evento) }}</small>
-              </div>
-            </div>
-          </div>
-        </div>
-        <div class="modal-footer">
-          <button @click="modalDetalle = false" class="btn-secondary">Cerrar</button>
-        </div>
-      </div>
-    </div>
-
-    <!-- MODAL VISOR INDEPENDIENTE DE MALLA E HISTORIAL ACADÉMICO -->
-    <ModalAvanceAcademico
-      :visible="modalAvance"
-      :materias="materias"
-      :historico-lista="historicoAcademico"
-      :historico-map="historicoMap"
-      :materias-solicitadas-ids="materiasSolicitadasActivas"
-      :materia-seleccionada="materiaSeleccionadaMalla"
-      :semestre-actual="usuario?.estudiante?.semestre_actual || 5"
-      @close="modalAvance = false"
-      @select-materia="seleccionarMateriaDesdeMalla"
-    />
   </div>
 </template>
 
@@ -384,11 +340,10 @@ import {
   BookPlus, 
   Paperclip, 
   QrCode,
+  Wallet,
+  RefreshCw,
   UploadCloud,
   X, 
-  BookOpen, 
-  FolderArchive, 
-  ArrowRight,
   Calendar,
   Clock,
   CheckCircle2,
@@ -398,6 +353,7 @@ import {
   AlertCircle,
   GraduationCap
 } from '@lucide/vue';
+import ExpedienteSolicitudDialog from '../../components/common/ExpedienteSolicitudDialog.vue';
 import PagoQrModal from '../../components/pago/PagoQrModal.vue';
 import logoStripe from '../../assets/stripe.svg';
 import ModalAvanceAcademico from '../../components/estudiante/ModalAvanceAcademico.vue';
@@ -408,7 +364,18 @@ const props = defineProps({
   usuario: Object
 });
 
+const nombreAlumno = computed(() => [props.usuario?.nombre, props.usuario?.apellidos].filter(Boolean).join(' '));
+
 const solicitudes = ref([]);
+const actualizandoSolicitudes = ref(false);
+const pausaActualizacion = ref(false);
+const errorSolicitudes = ref('');
+const ultimaActualizacion = ref('');
+const consultasSolicitudes = new AbortController();
+const horaActualizacion = new Intl.DateTimeFormat('es-BO', { hour: '2-digit', minute: '2-digit', second: '2-digit' });
+let consultaSolicitudes;
+let temporizadorPausa;
+let intervaloSolicitudes;
 const periodos = ref([]);
 const materias = ref([]);
 const historicoAcademico = ref([]);
@@ -456,11 +423,19 @@ const router = useRouter();
 const modalRespaldo = ref(false);
 const modalPago = ref(false);
 const modalPagoQr = ref(false);
-const stripeDisponible = ref(false);
+const selectorPago = ref(null);
+const stripeDisponible = ref(null);
 const stripeAbriendo = ref(null);
 const estadoStripe = ref('');
+const errorStripe = ref('');
 const consultasStripe = new AbortController();
-const modalDetalle = ref(false);
+const etiquetaStripe = computed(() => {
+  if (stripeAbriendo.value !== null) return 'Abriendo Stripe…';
+  if (stripeDisponible.value === null) return 'Comprobando disponibilidad…';
+  if (stripeDisponible.value === 'error') return 'No se pudo comprobar la disponibilidad';
+  return stripeDisponible.value ? 'Paga en Stripe Checkout' : 'Stripe no está habilitado';
+});
+const expediente = ref(null);
 const solicitudActiva = ref(null);
 
 const archivoRespaldoInicial = ref(null);
@@ -597,18 +572,52 @@ const formatearPeriodoRecepcion = () => {
   return '23 al 24 de Marzo';
 };
 
-const cargarDatos = async () => {
+function actualizarSolicitudes(forzar = false) {
+  const { signal } = consultasSolicitudes;
+  if (consultaSolicitudes) return consultaSolicitudes;
+  if (signal.aborted || (!forzar && pausaActualizacion.value)) return;
+
+  clearTimeout(temporizadorPausa);
+  actualizandoSolicitudes.value = true;
+  errorSolicitudes.value = '';
+  consultaSolicitudes = api.get('/solicitudes/mis-casos', { signal, timeout: 10000 })
+    .then(({ data }) => {
+      if (signal.aborted) return;
+      solicitudes.value = data;
+      ultimaActualizacion.value = horaActualizacion.format(new Date());
+    })
+    .catch(() => {
+      if (!signal.aborted) errorSolicitudes.value = 'No se pudieron actualizar las solicitudes. Inténtalo de nuevo.';
+    })
+    .finally(() => {
+      consultaSolicitudes = null;
+      if (signal.aborted) return;
+      actualizandoSolicitudes.value = false;
+      pausaActualizacion.value = true;
+      temporizadorPausa = setTimeout(() => { pausaActualizacion.value = false; }, 3000);
+    });
+  return consultaSolicitudes;
+}
+
+const actualizarSiVisible = () => {
+  if (document.visibilityState === 'visible') actualizarSolicitudes();
+};
+
+const cargarDatos = async (trasCambio = false) => {
+  const cargarSolicitudes = async () => {
+    if (trasCambio && consultaSolicitudes) await consultaSolicitudes;
+    await actualizarSolicitudes(trasCambio);
+  };
   try {
     const carreraId = props.usuario?.estudiante?.carrera_id;
     const materiasParams = carreraId ? { carrera_id: carreraId } : {};
 
-    const [resS, resP, resM, resH] = await Promise.all([
-      api.get('/solicitudes/mis-casos'),
+    const [resP, resM, resH] = await Promise.all([
       api.get('/catalogos/periodos'),
       api.get('/catalogos/materias', { params: materiasParams }),
-      api.get('/solicitudes/mi-historico')
+      api.get('/solicitudes/mi-historico'),
+      cargarSolicitudes(),
     ]);
-    solicitudes.value = resS.data;
     periodos.value = resP.data;
     materias.value = resM.data;
     historicoAcademico.value = resH.data || [];
@@ -724,7 +733,7 @@ const guardarSolicitud = async () => {
     materiasSeleccionadasForm.value = [];
     archivoRespaldoInicial.value = null;
     alert('Solicitud de Caso Especial presentada exitosamente.');
-    cargarDatos();
+    cargarDatos(true);
   } catch (e) {
     alert(e.response?.data?.error || 'Error al crear solicitud.');
   } finally {
@@ -732,15 +741,7 @@ const guardarSolicitud = async () => {
   }
 };
 
-const verDetalle = async (sol) => {
-  try {
-    const res = await api.get(`/solicitudes/${sol.id}`);
-    solicitudActiva.value = res.data;
-    modalDetalle.value = true;
-  } catch (e) {
-    alert('Error al cargar expediente.');
-  }
-};
+const verDetalle = (sol) => expediente.value?.abrir(sol);
 
 const abrirAdjuntarRespaldo = (sol) => {
   solicitudActiva.value = sol;
@@ -760,7 +761,7 @@ const subirRespaldo = async () => {
     });
     modalRespaldo.value = false;
     alert('Documento de respaldo adjuntado correctamente.');
-    cargarDatos();
+    cargarDatos(true);
   } catch (e) {
     alert(e.response?.data?.error || 'Error al adjuntar archivo.');
   } finally {
@@ -768,25 +769,53 @@ const subirRespaldo = async () => {
   }
 };
 
-const abrirPagoQr = (sol) => {
+const elegirPago = (sol) => {
   solicitudActiva.value = sol;
+  errorStripe.value = '';
+  selectorPago.value.showModal();
+  consultarStripe();
+};
+
+async function consultarStripe() {
+  stripeDisponible.value = null;
+  try {
+    const { data } = await api.get('/pagos/stripe/config', { signal: consultasStripe.signal, timeout: 8000 });
+    stripeDisponible.value = data.disponible === true;
+  } catch {
+    if (!consultasStripe.signal.aborted) stripeDisponible.value = 'error';
+  }
+}
+
+const abrirPagoQr = () => {
+  selectorPago.value.close();
   modalPagoQr.value = true;
+};
+
+const cerrarPagoQr = async (volver) => {
+  modalPagoQr.value = false;
+  if (volver) {
+    await nextTick();
+    selectorPago.value?.showModal();
+  }
 };
 
 async function pagarConTarjeta(sol) {
   stripeAbriendo.value = sol.id;
-  estadoStripe.value = '';
+  errorStripe.value = '';
   try {
-    const { data } = await api.post(`/solicitudes/${sol.id}/pagar-stripe`, {}, { signal: consultasStripe.signal });
+    const { data } = await api.post(`/solicitudes/${sol.id}/pagar-stripe`, {}, { signal: consultasStripe.signal, timeout: 30000 });
     if (data.estado === 'PAGADO') {
+      selectorPago.value.close();
       estadoStripe.value = 'Pago del arancel confirmado.';
-      await cargarDatos();
+      await cargarDatos(true);
       return;
     }
     window.location.assign(data.url);
   } catch (error) {
     if (!consultasStripe.signal.aborted) {
-      estadoStripe.value = error.response?.data?.message || 'No se pudo abrir el pago con tarjeta.';
+      const mensaje = error.response?.data?.message || 'No se pudo abrir el pago con tarjeta.';
+      errorStripe.value = mensaje;
+      if (!selectorPago.value?.open) estadoStripe.value = mensaje;
     }
   } finally {
     stripeAbriendo.value = null;
@@ -817,7 +846,7 @@ async function procesarRetornoStripe() {
 
     if (data.estado === 'PAGADO') {
       estadoStripe.value = 'Pago con tarjeta confirmado.';
-      await cargarDatos();
+      await cargarDatos(true);
     } else {
       estadoStripe.value = 'El pago con tarjeta se cerró. Puedes elegir un método de pago nuevamente.';
     }
@@ -834,11 +863,11 @@ async function procesarRetornoStripe() {
 }
 
 const onPagoQrCompletado = (pago) => {
-  cargarDatos();
+  cargarDatos(true);
 };
 
-const abrirPago = (sol) => {
-  solicitudActiva.value = sol;
+const abrirPago = () => {
+  selectorPago.value.close();
   archivoComprobante.value = null;
   modalPago.value = true;
 };
@@ -854,7 +883,7 @@ const subirComprobante = async () => {
     });
     modalPago.value = false;
     alert(data.estado === 'PAGADO' ? 'El arancel ya fue confirmado.' : data.mensaje);
-    cargarDatos();
+    cargarDatos(true);
   } catch (e) {
     alert(e.response?.data?.error || e.response?.data?.message || 'Error al adjuntar comprobante.');
   } finally {
@@ -866,7 +895,7 @@ watch(
   () => route.path === '/estudiante' ? route.query.solicitud : null,
   (id) => {
     if (typeof id !== 'string' || !/^\d+$/.test(id)) return;
-    verDetalle({ id });
+    nextTick(() => verDetalle({ id }));
     const query = { ...route.query };
     delete query.solicitud;
     router.replace({ path: route.path, query, hash: route.hash });
@@ -890,24 +919,106 @@ watch(
 );
 
 onMounted(async () => {
-  api.get('/pagos/stripe/config', { signal: consultasStripe.signal })
-    .then(({ data }) => { stripeDisponible.value = data.disponible; })
-    .catch(() => {});
+  intervaloSolicitudes = setInterval(actualizarSiVisible, 30000);
+  document.addEventListener('visibilitychange', actualizarSiVisible);
   procesarRetornoStripe();
   await cargarDatos();
   datosInicialesCargados.value = true;
 });
-onUnmounted(() => consultasStripe.abort());
+onUnmounted(() => {
+  consultasStripe.abort();
+  consultasSolicitudes.abort();
+  clearInterval(intervaloSolicitudes);
+  clearTimeout(temporizadorPausa);
+  document.removeEventListener('visibilitychange', actualizarSiVisible);
+});
 </script>
 
 <style scoped>
-.btn-stripe img {
-  width: 46px;
-  height: auto;
+.bienvenida-alumno {
+  padding: 1rem;
+  margin-bottom: .75rem;
+  background: var(--surface-alt);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-xl);
+  overflow-wrap: anywhere;
+}
+
+.bienvenida-alumno h1 {
+  margin: 0;
+  font-size: 1.35rem;
+}
+
+.bienvenida-alumno p {
+  margin: .25rem 0 0;
+  color: var(--text-muted);
+  font-size: .875rem;
+}
+
+.actualizacion-solicitudes {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: .5rem .75rem;
+  margin-bottom: .75rem;
+}
+
+.actualizacion-solicitudes p {
+  margin: 0;
+  color: var(--text-muted);
+  font-size: .875rem;
+}
+
+.opciones-pago {
+  display: grid;
+  gap: .625rem;
+  padding: 1rem;
+}
+
+.opciones-pago p {
+  margin: 0;
+}
+
+.opcion-pago {
+  justify-content: flex-start;
+  padding: .625rem;
+  border-radius: var(--radius-lg);
+  gap: .75rem;
+  text-align: start;
+}
+
+.opcion-pago small {
   display: block;
-  background: #fff;
-  padding: 2px 4px;
+  margin-top: .125rem;
+  color: var(--text-muted);
+}
+
+.opcion-pago:disabled {
+  cursor: default;
+  background: var(--surface-alt);
+}
+
+.marca-pago {
+  flex: 0 0 3.25rem;
+  min-height: 2.5rem;
+  display: grid;
+  place-items: center;
   border-radius: var(--radius-sm);
+  background: var(--surface-alt);
+}
+
+.marca-pago:has(img) {
+  background: #fff;
+}
+
+.marca-pago img {
+  width: 2.5rem;
+  max-width: 100%;
+}
+
+.opcion-boleta {
+  justify-self: start;
+  text-align: start;
 }
 
 .schedule-banner {
@@ -1012,19 +1123,6 @@ onUnmounted(() => consultasStripe.abort());
 }
 .btn-add { background: var(--primary-subtle); color: var(--text); }
 .btn-file { background: var(--surface-alt); color: var(--text); }
-.pay-actions-group {
-  display: flex;
-  gap: 0.35rem;
-  flex-wrap: wrap;
-}
-.btn-pay-qr {
-  background: var(--primary);
-  color: var(--on-primary);
-  border-color: transparent;
-}
-.btn-pay-qr:hover {
-  filter: brightness(1.1);
-}
 .no-records {
   text-align: center;
   padding: 2rem;
@@ -1092,11 +1190,6 @@ onUnmounted(() => consultasStripe.abort());
   font-size: 0.9rem;
   color: var(--text);
 }
-.clean-list { list-style: none; padding: 0; }
-.clean-list li { padding: 0.4rem 0; border-bottom: 1px solid var(--border); display: flex; align-items: center; gap: 0.4rem; }
-.timeline { border-left: 2px solid var(--border); padding-left: 1rem; margin-top: 1rem; }
-.timeline-item { position: relative; margin-bottom: 1rem; }
-.timeline-dot { position: absolute; left: -1.35rem; top: 0.2rem; width: 10px; height: 10px; background: var(--primary-text); border-radius: 50%; }
 .banner-aviso-info {
   background: var(--primary-subtle);
   border: 1px solid var(--primary-text);
@@ -1170,11 +1263,6 @@ onUnmounted(() => consultasStripe.abort());
   border: 1px solid var(--border);
   border-radius: 4px;
   width: 100%;
-}
-.modal-body-scroll {
-  max-height: 70vh;
-  overflow-y: auto;
-  padding-right: 0.5rem;
 }
 .mt-3 { margin-top: 1rem; }
 .mt-4 { margin-top: 1.5rem; }

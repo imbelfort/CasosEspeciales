@@ -31,6 +31,11 @@ class OficioCpd extends Model
         return $this->belongsToMany(Solicitud::class, 'oficio_cpd_solicitud', 'id_oficio', 'id_solicitud');
     }
 
+    public function solicitudPrincipal()
+    {
+        return $this->belongsTo(Solicitud::class, 'id_solicitud');
+    }
+
     public function respuestas()
     {
         return $this->hasMany(OficioRespuestaCpd::class, 'id_oficio');
